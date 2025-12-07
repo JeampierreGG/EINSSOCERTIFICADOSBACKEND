@@ -183,7 +183,7 @@ class CertificateResource extends Resource
                             ]),
                         Forms\Components\Grid::make(3)
                             ->schema([
-                                Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required(),
+                                Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required()->native(false)->displayFormat('d/m/Y')->firstDayOfWeek(1),
                                 Forms\Components\TextInput::make('code')
                                     ->label('Código de certificado')
                                     ->required()
@@ -267,7 +267,7 @@ class CertificateResource extends Resource
                                     ]),
                                 Forms\Components\Grid::make(3)
                                     ->schema([
-                                        Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required(),
+                                        Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required()->native(false)->displayFormat('d/m/Y')->firstDayOfWeek(1),
                                         Forms\Components\TextInput::make('code')
                                             ->label('Código de certificado')
                                             ->required()
@@ -315,7 +315,7 @@ class CertificateResource extends Resource
                 Tables\Columns\TextColumn::make('institution.name')->label('Institución')->searchable(),
                 Tables\Columns\TextColumn::make('title')->label('Título')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('category')->label('Categoría')->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('issue_date')->date()->label('Fecha de emisión'),
+                Tables\Columns\TextColumn::make('issue_date')->date('d/m/Y')->label('Fecha de emisión'),
                 Tables\Columns\TextColumn::make('code')->label('Código'),
             ])
             ->filters([
