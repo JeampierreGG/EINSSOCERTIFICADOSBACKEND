@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Certificate;
+use App\Models\CertificateItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -55,6 +56,7 @@ class CertificateController extends Controller
                     'code' => (string) ($c->code ?? ''),
                     'logo' => $logoPath ? url('/api/institutions/'.$c->institution_id.'/logo') : null,
                     'filePath' => $c->file_path,
+                    'downloadUrl' => url('/api/certificates/'.$c->id.'/download?type=solo'),
                 ];
             } else {
                 foreach ($c->items as $item) {
@@ -72,6 +74,7 @@ class CertificateController extends Controller
                         'code' => (string) ($item->code ?? ''),
                         'logo' => $logoPath ? url('/api/institutions/'.$item->institution_id.'/logo') : null,
                         'filePath' => $item->file_path,
+                        'downloadUrl' => url('/api/certificates/'.$item->id.'/download?type=item'),
                     ];
                 }
             }
@@ -91,5 +94,24 @@ class CertificateController extends Controller
             'diplomado' => 'Diplomado',
             default => null,
         };
+    }
+
+    public function download(Request $request, string $id)
+    {
+        $type = $request->query('type', 'solo');
+        $record = null;
+        if ($type === 'item') {
+            $record = CertificateItem::find($id);
+        } else {
+            $record = Certificate::find($id);
+        }
+        if (! $record || ! $record->file_path) {
+            return response()->json(['message' => 'Archivo no disponible'], 404);
+        }
+        $nameBase = trim(($record->title ?? 'certificado').' '.($record->code ?? ''));
+        $safeName = preg_replace('/[^A-Za-z0-9_\- ]+/','', $nameBase);
+        $downloadName = ($safeName !== '' ? $safeName : 'certificado').'.pdf';
+        return Storage::disk(config('filesystems.default'))
+            ->download($record->file_path, $downloadName);
     }
 }
