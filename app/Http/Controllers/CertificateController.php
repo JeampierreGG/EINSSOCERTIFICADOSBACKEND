@@ -19,12 +19,15 @@ class CertificateController extends Controller
             ]);
         }
 
-        $certs = Certificate::with(['institution', 'items', 'user.profile'])
+        $certs = Certificate::with(['institution', 'items.institution', 'user.profile'])
             ->where(function ($w) use ($q) {
                 $w->whereHas('user.profile', function ($p) use ($q) {
                     $p->where('dni_ce', $q);
                 })
-                ->orWhere('code', $q);
+                ->orWhere('code', $q)
+                ->orWhereHas('items', function ($i) use ($q) {
+                    $i->where('code', $q);
+                });
             })
             ->orderByDesc('issue_date')
             ->get();
