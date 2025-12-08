@@ -19,34 +19,8 @@ class CertificateController extends Controller
             ]);
         }
 
-        $solo = Certificate::with(['institution', 'user.profile'])
-            ->where('type', 'solo')
-            ->where('code', $q)
-            ->first();
-
-        if ($solo) {
-            $institutionName = optional($solo->institution)->name ?? '';
-            $logoPath = optional($solo->institution)->logo_path;
-            return response()->json([
-                'userName' => (string) optional($solo->user)->name,
-                'certificates' => [[
-                    'id' => (string) $solo->id,
-                    'courseTitle' => $solo->title,
-                    'category' => self::mapCategory($solo->category),
-                    'institution' => $institutionName,
-                    'hours' => (int) ($solo->hours ?? 0),
-                    'grade' => (int) ($solo->grade ?? 0),
-                    'issueDate' => $solo->issue_date ? \Carbon\Carbon::parse($solo->issue_date)->format('d/m/Y') : '',
-                    'code' => (string) ($solo->code ?? ''),
-                    'logo' => $logoPath ? url('/api/institutions/'.$solo->institution_id.'/logo') : null,
-                    'filePath' => $solo->file_path,
-                    'downloadUrl' => url('/api/certificates/'.$solo->id.'/download?type=solo'),
-                ]],
-            ]);
-        }
-
         $item = CertificateItem::with(['institution', 'certificate.user.profile'])
-            ->where('code', $q)
+            ->whereRaw('LOWER(TRIM(code)) = ?', [strtolower($q)])
             ->first();
 
         if ($item) {
@@ -66,6 +40,31 @@ class CertificateController extends Controller
                     'logo' => $logoPath ? url('/api/institutions/'.$item->institution_id.'/logo') : null,
                     'filePath' => $item->file_path,
                     'downloadUrl' => url('/api/certificates/'.$item->id.'/download?type=item'),
+                ]],
+            ]);
+        }
+
+        $certAny = Certificate::with(['institution', 'user.profile'])
+            ->whereRaw('LOWER(TRIM(code)) = ?', [strtolower($q)])
+            ->first();
+
+        if ($certAny) {
+            $institutionName = optional($certAny->institution)->name ?? '';
+            $logoPath = optional($certAny->institution)->logo_path;
+            return response()->json([
+                'userName' => (string) optional($certAny->user)->name,
+                'certificates' => [[
+                    'id' => (string) $certAny->id,
+                    'courseTitle' => $certAny->title,
+                    'category' => self::mapCategory($certAny->category),
+                    'institution' => $institutionName,
+                    'hours' => (int) ($certAny->hours ?? 0),
+                    'grade' => (int) ($certAny->grade ?? 0),
+                    'issueDate' => $certAny->issue_date ? \Carbon\Carbon::parse($certAny->issue_date)->format('d/m/Y') : '',
+                    'code' => (string) ($certAny->code ?? ''),
+                    'logo' => $logoPath ? url('/api/institutions/'.$certAny->institution_id.'/logo') : null,
+                    'filePath' => $certAny->file_path,
+                    'downloadUrl' => url('/api/certificates/'.$certAny->id.'/download?type=solo'),
                 ]],
             ]);
         }
