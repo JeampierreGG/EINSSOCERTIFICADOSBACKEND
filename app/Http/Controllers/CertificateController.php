@@ -40,6 +40,7 @@ class CertificateController extends Controller
                     'logo' => $logoPath ? url('/api/institutions/'.$item->institution_id.'/logo') : null,
                     'filePath' => $item->file_path,
                     'downloadUrl' => url('/api/certificates/'.$item->id.'/download?type=item'),
+                    'groupId' => optional($item->certificate)->megapack_group_id,
                 ]],
             ]);
         }
@@ -65,6 +66,7 @@ class CertificateController extends Controller
                     'logo' => $logoPath ? url('/api/institutions/'.$certAny->institution_id.'/logo') : null,
                     'filePath' => $certAny->file_path,
                     'downloadUrl' => url('/api/certificates/'.$certAny->id.'/download?type=solo'),
+                    'groupId' => $certAny->megapack_group_id,
                 ]],
             ]);
         }
@@ -103,6 +105,7 @@ class CertificateController extends Controller
                     'logo' => $logoPath ? url('/api/institutions/'.$c->institution_id.'/logo') : null,
                     'filePath' => $c->file_path,
                     'downloadUrl' => url('/api/certificates/'.$c->id.'/download?type=solo'),
+                    'groupId' => $c->megapack_group_id,
                 ];
             } else {
                 foreach ($c->items as $it) {
@@ -120,6 +123,7 @@ class CertificateController extends Controller
                         'logo' => $logoPath ? url('/api/institutions/'.$it->institution_id.'/logo') : null,
                         'filePath' => $it->file_path,
                         'downloadUrl' => url('/api/certificates/'.$it->id.'/download?type=item'),
+                        'groupId' => $c->megapack_group_id,
                     ];
                 }
             }
