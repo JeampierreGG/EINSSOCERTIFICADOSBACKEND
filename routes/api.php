@@ -23,3 +23,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/validate-certificates', [CertificateController::class, 'search']);
 Route::get('/institutions/{institution}/logo', [InstitutionController::class, 'logo']);
 Route::get('/certificates/{id}/download', [CertificateController::class, 'download']);
+Route::get('/certificates/{id}/view', [CertificateController::class, 'view']);

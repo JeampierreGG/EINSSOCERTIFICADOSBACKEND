@@ -159,4 +159,26 @@ class CertificateController extends Controller
         return Storage::disk(config('filesystems.default'))
             ->download($record->file_path, $downloadName);
     }
+
+    public function view(Request $request, string $id)
+    {
+        $type = $request->query('type', 'solo');
+        $record = null;
+        if ($type === 'item') {
+            $record = CertificateItem::find($id);
+        } else {
+            $record = Certificate::find($id);
+        }
+        if (! $record || ! $record->file_path) {
+            return response()->json(['message' => 'Archivo no disponible'], 404);
+        }
+        $nameBase = trim(($record->title ?? 'certificado').' '.($record->code ?? ''));
+        $safeName = preg_replace('/[^A-Za-z0-9_\- ]+/','', $nameBase);
+        $inlineName = ($safeName !== '' ? $safeName : 'certificado').'.pdf';
+        return Storage::disk(config('filesystems.default'))
+            ->response($record->file_path, $inlineName, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$inlineName.'"',
+            ]);
+    }
 }
