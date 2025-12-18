@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\CertificateResource\Pages;
@@ -24,7 +23,6 @@ use Illuminate\Validation\Rule;
 class CertificateResource extends Resource
 {
     protected static ?string $model = Certificate::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Certificados';
 
@@ -54,7 +52,6 @@ class CertificateResource extends Resource
                             ->regex('/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/u')
                             ->disabled(fn ($record) => filled($record))
                             ->afterStateHydrated(function ($state, Set $set, Get $get) {
-                                // En edición, mostrar el nombre del usuario vinculado
                                 if (filled($state)) {
                                     return;
                                 }
@@ -85,12 +82,10 @@ class CertificateResource extends Resource
                             ->extraAttributes(['pattern' => '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$', 'inputmode' => 'text'])
                             ->afterStateUpdated(function ($state, Set $set) {
                                 $name = trim((string) $state);
-                                // Sanitizar en vivo: eliminar cualquier número o símbolo, permitir solo letras y espacios
                                 if ($name !== '') {
                                     $sanitized = preg_replace('/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+/u', '', $name);
                                     if ($sanitized !== $name) {
                                         $set('student_name', $sanitized);
-                                        // No continuar hasta que el estado se estabilice con caracteres válidos
                                         return;
                                     }
                                 }
@@ -183,7 +178,50 @@ class CertificateResource extends Resource
                             ]),
                         Forms\Components\Grid::make(3)
                             ->schema([
-                                Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required()->native(true)->displayFormat('d/m/Y')->firstDayOfWeek(1),
+                                Forms\Components\TextInput::make('issue_date')
+                                    ->label('Fecha de emisión')
+                                    ->required()
+                                    ->mask('99/99/9999')
+                                    ->placeholder('DD/MM/AAAA')
+                                    ->rules([
+                                        'date_format:d/m/Y',
+                                        'before_or_equal:today',
+                                        function () {
+                                            return function (string $attribute, $value, Closure $fail) {
+                                                if (!$value) return;
+                                                
+                                                if (!preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $value, $matches)) {
+                                                    $fail('El formato de fecha debe ser DD/MM/AAAA');
+                                                    return;
+                                                }
+                                                
+                                                $day = (int) $matches[1];
+                                                $month = (int) $matches[2];
+                                                $year = (int) $matches[3];
+                                                
+                                                if ($day < 1 || $day > 31) {
+                                                    $fail('El día debe estar entre 01 y 31');
+                                                    return;
+                                                }
+                                                
+                                                if ($month < 1 || $month > 12) {
+                                                    $fail('El mes debe estar entre 01 y 12');
+                                                    return;
+                                                }
+                                                
+                                                if ($year < 1900 || $year > date('Y')) {
+                                                    $fail('El año debe ser válido');
+                                                    return;
+                                                }
+                                                
+                                                if (!checkdate($month, $day, $year)) {
+                                                    $fail('La fecha ingresada no es válida');
+                                                }
+                                            };
+                                        },
+                                    ])
+                                    ->dehydrateStateUsing(fn ($state) => $state ? \Carbon\Carbon::createFromFormat('d/m/Y', $state)->format('Y-m-d') : null)
+                                    ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y') : null),
                                 Forms\Components\TextInput::make('code')
                                     ->label('Código de certificado')
                                     ->required()
@@ -267,7 +305,50 @@ class CertificateResource extends Resource
                                     ]),
                                 Forms\Components\Grid::make(3)
                                     ->schema([
-                                        Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required()->native(true)->displayFormat('d/m/Y')->firstDayOfWeek(1),
+                                        Forms\Components\TextInput::make('issue_date')
+                                            ->label('Fecha de emisión')
+                                            ->required()
+                                            ->mask('99/99/9999')
+                                            ->placeholder('DD/MM/AAAA')
+                                            ->rules([
+                                                'date_format:d/m/Y',
+                                                'before_or_equal:today',
+                                                function () {
+                                                    return function (string $attribute, $value, Closure $fail) {
+                                                        if (!$value) return;
+                                                        
+                                                        if (!preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $value, $matches)) {
+                                                            $fail('El formato de fecha debe ser DD/MM/AAAA');
+                                                            return;
+                                                        }
+                                                        
+                                                        $day = (int) $matches[1];
+                                                        $month = (int) $matches[2];
+                                                        $year = (int) $matches[3];
+                                                        
+                                                        if ($day < 1 || $day > 31) {
+                                                            $fail('El día debe estar entre 01 y 31');
+                                                            return;
+                                                        }
+                                                        
+                                                        if ($month < 1 || $month > 12) {
+                                                            $fail('El mes debe estar entre 01 y 12');
+                                                            return;
+                                                        }
+                                                        
+                                                        if ($year < 1900 || $year > date('Y')) {
+                                                            $fail('El año debe ser válido');
+                                                            return;
+                                                        }
+                                                        
+                                                        if (!checkdate($month, $day, $year)) {
+                                                            $fail('La fecha ingresada no es válida');
+                                                        }
+                                                    };
+                                                },
+                                            ])
+                                            ->dehydrateStateUsing(fn ($state) => $state ? \Carbon\Carbon::createFromFormat('d/m/Y', $state)->format('Y-m-d') : null)
+                                            ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y') : null),
                                         Forms\Components\TextInput::make('code')
                                             ->label('Código de certificado')
                                             ->required()
