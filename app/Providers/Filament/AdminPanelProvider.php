@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -29,6 +30,11 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Administración')
             ->colors([
                 'primary' => Color::Amber,
+            ])
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('Gestión de certificados')
+                    ->collapsed(),
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')

@@ -25,6 +25,7 @@ class CertificateResource extends Resource
     protected static ?string $model = Certificate::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Certificados';
+    protected static ?string $navigationGroup = 'Gestión de certificados';
 
     public static function getModelLabel(): string
     {
