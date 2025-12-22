@@ -235,8 +235,11 @@ class CertificateResource extends Resource
                                     ->directory('certificates')
                                     ->acceptedFileTypes(['application/pdf','image/png','image/jpeg','image/jpg','image/webp'])
                                     ->visibility('private')
-                                    ->required()
-                                    ->maxSize(10240),
+                                
+                                    ->maxSize(10240)
+                                    ->nullable() // <- Esto permite que Livewire no rompa al eliminar
+                                    ->dehydrated(fn ($state) => !empty($state)) // Solo guarda si hay archivo
+                                    ,
                             ]),
                     ]),
                 Forms\Components\Group::make()
@@ -247,6 +250,7 @@ class CertificateResource extends Resource
                             ->relationship()
                             ->label('Certificados')
                             ->addActionLabel('Agregar certificado')
+                          ->defaultItems(4)
                             ->schema([
                                 Forms\Components\Grid::make(2)
                                     ->schema([
@@ -363,8 +367,11 @@ class CertificateResource extends Resource
                                             ->directory('certificates')
                                             ->acceptedFileTypes(['application/pdf','image/png','image/jpeg','image/jpg','image/webp'])
                                             ->visibility('private')
-                                            ->required()
-                                            ->maxSize(10240),
+                                          ->reactive()
+                                            ->maxSize(10240)
+                                            ->nullable() // <- Esto permite que Livewire no rompa al eliminar
+                                            ->dehydrated(fn ($state) => filled($state)) // Solo guarda si hay archivo
+                                            ,
                                     ]),
                             ])
                             ->collapsible()
