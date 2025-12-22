@@ -6,8 +6,6 @@ use App\Filament\Admin\Resources\CertificateResource;
 use App\Models\Certificate;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Models\Role;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 use Filament\Actions;
@@ -28,24 +26,32 @@ class CreateCertificate extends CreateRecord
         if (!empty($data['title'])) {
             $data['title'] = \Illuminate\Support\Str::limit(trim((string) $data['title']), 255, '');
         }
-        // Resolver usuario: si no se seleccionó, crear con el nombre ingresado
+        // Resolver usuario: vincular por nombre (si existe), si no crear con el nombre ingresado
         if (empty($data['user_id']) && !empty($data['student_name'])) {
+            $studentName = trim((string) $data['student_name']);
             $studentRoleId = 2; // Estudiante
-            $user = User::create([
-                'name' => $data['student_name'],
-                'is_admin' => false,
-                'role_id' => $studentRoleId,
-                // Email/Password opcionales según migración
-                'email' => null,
-                'password' => null,
-            ]);
-            // Crear/actualizar perfil con DNI/CE si existe
+            $user = User::query()
+                ->where('is_admin', false)
+                ->where('name', $studentName)
+                ->first();
+
+            if (!$user) {
+                $user = User::create([
+                    'name' => $studentName,
+                    'is_admin' => false,
+                    'role_id' => $studentRoleId,
+                    'email' => null,
+                    'password' => null,
+                ]);
+            }
+
             if (!empty($data['dni_ce'])) {
                 UserProfile::updateOrCreate(
                     ['user_id' => $user->id],
                     ['dni_ce' => $data['dni_ce']]
                 );
             }
+
             $data['user_id'] = $user->id;
         }
 

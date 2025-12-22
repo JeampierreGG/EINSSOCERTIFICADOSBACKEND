@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\CertificateResource\Pages;
 
 use App\Filament\Admin\Resources\CertificateResource;
-use App\Models\Certificate;
 use Filament\Forms;
 use Filament\Forms\Form;
 
@@ -63,7 +62,7 @@ class EditCertificate extends EditRecord
                         ->columnSpanFull()
                         ->schema([
                             Forms\Components\Repeater::make('items')
-                                ->relationship('items')
+                                ->relationship('items', modifyQueryUsing: fn ($query) => $query->orderBy('created_at')->orderBy('id'))
                                 ->label('Certificados del Megapack')
                                 ->schema([
                                     Forms\Components\Grid::make(2)
@@ -94,19 +93,19 @@ class EditCertificate extends EditRecord
                                                 ->minValue(0)
                                                 ->maxValue(20)
                                                 ->rules(['integer','between:0,20'])
-                                                ->live()
-                                                ->afterStateUpdated(function ($state, \Filament\Forms\Set $set) {
-                                                    $v = is_numeric($state) ? (int) $state : 0;
-                                                    if ($v < 0) $v = 0;
-                                                    if ($v > 20) $v = 20;
-                                                    $set('grade', $v);
-                                                })
                                                 ->dehydrateStateUsing(fn ($state) => max(0, min(20, (int) $state)))
                                                 ->extraAttributes(['inputmode' => 'numeric']),
                                         ]),
                                     Forms\Components\Grid::make(3)
                                         ->schema([
-                                            Forms\Components\DatePicker::make('issue_date')->label('Fecha de emisión')->required(),
+                                            Forms\Components\TextInput::make('issue_date')
+                                                ->label('Fecha de emisión')
+                                                ->required()
+                                                ->placeholder('dd/mm/yyyy')
+                                                ->mask('99/99/9999')
+                                                ->rules(['regex:/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/'])
+                                                ->dehydrateStateUsing(fn ($state) => $state ? \Carbon\Carbon::createFromFormat('d/m/Y', $state)->format('Y-m-d') : null)
+                                                ->formatStateUsing(fn ($state) => $state ? \Carbon\Carbon::parse($state)->format('d/m/Y') : null),
                                             Forms\Components\TextInput::make('code')->label('Código de certificado')->required(),
                                             Forms\Components\FileUpload::make('file_path')
                                                 ->label('Archivo')
@@ -128,7 +127,6 @@ class EditCertificate extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Con Repeater->relationship('items'), Filament gestiona la persistencia.
         return $data;
     }
 }

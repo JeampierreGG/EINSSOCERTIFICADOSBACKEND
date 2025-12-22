@@ -46,8 +46,7 @@ class CertificateResource extends Resource
                         Forms\Components\TextInput::make('student_name')
                             ->label('Nombres y Apellidos')
                             ->placeholder('Escribe nombres y apellidos')
-                            ->reactive()
-                            ->live()
+                            ->lazy()
                             ->required()
                             ->regex('/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/u')
                             ->disabled(fn ($record) => filled($record))
@@ -61,48 +60,32 @@ class CertificateResource extends Resource
                                     $set('student_name', $user?->name);
                                 }
                             })
-                            ->datalist(function (Forms\Get $get) {
-                                $q = trim((string) $get('student_name'));
-                                if ($q === '') {
-                                    return User::query()
-                                        ->where('is_admin', false)
-                                        ->orderBy('name')
-                                        ->limit(10)
-                                        ->pluck('name')
-                                        ->all();
-                                }
-                                return User::query()
-                                    ->where('is_admin', false)
-                                    ->whereRaw('LOWER(name) like ?', ['%' . strtolower($q) . '%'])
-                                    ->orderBy('name')
-                                    ->limit(20)
-                                    ->pluck('name')
-                                    ->all();
-                            })
-                            ->extraAttributes(['pattern' => '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$', 'inputmode' => 'text'])
                             ->afterStateUpdated(function ($state, Set $set) {
                                 $name = trim((string) $state);
-                                if ($name !== '') {
-                                    $sanitized = preg_replace('/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+/u', '', $name);
-                                    if ($sanitized !== $name) {
-                                        $set('student_name', $sanitized);
-                                        return;
-                                    }
-                                }
+
                                 if ($name === '') {
                                     $set('user_id', null);
                                     $set('dni_ce', null);
                                     return;
                                 }
-                                $user = User::where('is_admin', false)->where('name', $name)->first();
-                                if ($user) {
-                                    $set('user_id', $user->id);
-                                    $profile = UserProfile::where('user_id', $user->id)->first();
-                                    $set('dni_ce', $profile?->dni_ce);
-                                } else {
-                                    $set('user_id', null);
-                                }
-                            }),
+
+                                $user = User::query()
+                                    ->where('users.is_admin', false)
+                                    ->where('users.name', $name)
+                                    ->leftJoin('user_profiles', 'users.id', '=', 'user_profiles.user_id')
+                                    ->select(['users.id', 'user_profiles.dni_ce'])
+                                    ->first();
+
+                                $set('user_id', $user?->id);
+                                $set('dni_ce', $user?->dni_ce);
+                            })
+                            ->datalist(fn () => User::query()
+                                ->where('is_admin', false)
+                                ->orderBy('name')
+                                ->limit(20)
+                                ->pluck('name')
+                                ->all())
+                            ->extraAttributes(['pattern' => '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$', 'inputmode' => 'text']),
                         Forms\Components\TextInput::make('dni_ce')
                             ->label('DNI/CE')
                             ->maxLength(20)
@@ -166,13 +149,6 @@ class CertificateResource extends Resource
                                     ->minValue(0)
                                     ->maxValue(20)
                                     ->rules(['integer','between:0,20'])
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, Set $set) {
-                                        $v = is_numeric($state) ? (int) $state : 0;
-                                        if ($v < 0) $v = 0;
-                                        if ($v > 20) $v = 20;
-                                        $set('grade', $v);
-                                    })
                                     ->dehydrateStateUsing(fn ($state) => max(0, min(20, (int) $state)))
                                     ->extraAttributes(['inputmode' => 'numeric']),
                             ]),
@@ -227,6 +203,16 @@ class CertificateResource extends Resource
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->rules(['max:255'])
+                                    ->extraAttributes([
+    'style' => 'text-transform: uppercase;',
+])
+                                    ->dehydrateStateUsing(fn ($state) =>
+                                                is_string($state) ? strtoupper(trim($state)) : $state
+                                            )
+                                            ->extraAttributes([
+                                                'style' => 'text-transform: uppercase;',
+                                    ])
+
                                     ->rule(function (?\App\Models\Certificate $record) {
                                         return function (string $attribute, $value, Closure $fail) use ($record) {
                                             $v = is_string($value) ? trim($value) : '';
@@ -293,13 +279,6 @@ class CertificateResource extends Resource
                                             ->minValue(0)
                                             ->maxValue(20)
                                             ->rules(['integer','between:0,20'])
-                                            ->live()
-                                            ->afterStateUpdated(function ($state, Set $set) {
-                                                $v = is_numeric($state) ? (int) $state : 0;
-                                                if ($v < 0) $v = 0;
-                                                if ($v > 20) $v = 20;
-                                                $set('grade', $v);
-                                            })
                                             ->dehydrateStateUsing(fn ($state) => max(0, min(20, (int) $state)))
                                             ->extraAttributes(['inputmode' => 'numeric']),
                                     ]),
@@ -354,6 +333,14 @@ class CertificateResource extends Resource
                                             ->required()
                                             ->unique(ignoreRecord: true)
                                             ->rules(['max:255','distinct'])
+                                            ->extraAttributes([
+    'style' => 'text-transform: uppercase;',
+])
+                                            ->dehydrateStateUsing(fn ($state) =>
+    is_string($state) ? strtoupper(trim($state)) : $state
+)
+
+
                                             ->rule(function (?\App\Models\CertificateItem $record) {
                                                 return function (string $attribute, $value, Closure $fail) use ($record) {
                                                     $v = is_string($value) ? trim($value) : '';
