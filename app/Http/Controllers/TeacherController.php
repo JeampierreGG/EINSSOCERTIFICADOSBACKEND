@@ -14,7 +14,7 @@ class TeacherController extends Controller
 
         $teachers->each(function ($teacher) {
             if ($teacher->image_path) {
-                $teacher->image_url = url('/api/teachers/' . $teacher->id . '/image');
+                $teacher->image_url = url('/api/teachers/' . $teacher->id . '/image') . '?v=' . $teacher->updated_at->timestamp;
             }
         });
 
@@ -32,7 +32,7 @@ class TeacherController extends Controller
         }
 
         if ($teacher->image_path) {
-            $teacher->image_url = url('/api/teachers/' . $teacher->id . '/image');
+            $teacher->image_url = url('/api/teachers/' . $teacher->id . '/image') . '?v=' . $teacher->updated_at->timestamp;
         }
 
         $teacherArray = $teacher->toArray();
