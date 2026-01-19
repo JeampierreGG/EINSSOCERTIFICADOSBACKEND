@@ -131,7 +131,12 @@ class ManageCourseModules extends Page implements HasTable
                             ->helperText('Ingrese cada tema como una oración separada por puntos o saltos de línea.')
                             ->rows(6)
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->using(function (array $data, $record): CourseModule {
+                        $module = CourseModule::find($record->source_id);
+                        $module->update($data);
+                        return $module;
+                    }),
 
                 Tables\Actions\Action::make('material')
                     ->label('Material')
