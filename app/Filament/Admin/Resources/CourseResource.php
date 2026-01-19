@@ -116,11 +116,15 @@ class CourseResource extends Resource
                                     ->options([
                                         'draft' => 'Borrador',
                                         'published' => 'Publicado',
+                                        'proximamente' => 'Próximamente',
+                                        'iniciado' => 'Iniciado',
+                                        'finalizado' => 'Finalizado',
                                         'archived' => 'Archivado',
                                     ])
                                     ->required()
                                     ->default('draft')
-                                    ->native(false),
+                                    ->native(false)
+                                    ->helperText('Solo los cursos NO marcados como Borrador o Archivado serán visibles en la web.'),
                                 
                                 Forms\Components\TextInput::make('sessions_count')
                                     ->label('Número de Sesiones')
@@ -213,7 +217,7 @@ class CourseResource extends Resource
                     ->label('Estado')
                     ->colors([
                         'secondary' => 'proximamente',
-                        'success' => 'iniciado',
+                        'success' => ['iniciado', 'published'],
                         'danger' => 'finalizado',
                         'warning' => 'draft',
                         'gray' => 'archived',

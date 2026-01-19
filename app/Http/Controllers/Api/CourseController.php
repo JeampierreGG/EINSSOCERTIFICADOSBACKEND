@@ -17,8 +17,8 @@ class CourseController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Course::with(['teacher.user']) // Removed 'category' relationship as it's a string column now
-            ->where('status', 'published');
+        $query = Course::with(['teacher.user']) 
+            ->whereIn('status', ['published', 'proximamente', 'iniciado', 'finalizado']);
             
         if ($request->has('category')) {
             $cat = $request->input('category');

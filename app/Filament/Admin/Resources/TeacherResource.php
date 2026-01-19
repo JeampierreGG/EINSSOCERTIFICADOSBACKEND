@@ -49,7 +49,7 @@ class TeacherResource extends Resource
                                     }),
 
                                 Forms\Components\TextInput::make('title')
-                                    ->label('Título')
+                                    ->label('Profesión')
                                     ->required()
                                     ->maxLength(255),
                             ]),
@@ -101,7 +101,7 @@ class TeacherResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
-                    ->label('Título')
+                    ->label('Profesión')
                     ->searchable(),
           
             ])
