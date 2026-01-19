@@ -1,0 +1,300 @@
+<?php
+
+namespace App\Filament\Admin\Resources\PaymentFinalizedResource\Pages;
+
+use App\Filament\Admin\Resources\PaymentFinalizedResource;
+use App\Models\Certificate;
+use App\Models\CertificateItem;
+use App\Models\Institution;
+use App\Models\Payment;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Page;
+use Carbon\Carbon;
+
+class EditProcessCertificate extends Page
+{
+    protected static string $resource = PaymentFinalizedResource::class;
+
+    protected static string $view = 'filament.admin.resources.payment-finalized-resource.pages.edit-certificate';
+
+    public Payment $record;
+
+    public ?array $data = [];
+
+    public function getTitle(): string 
+    {
+        return 'Editar Certificado';
+    }
+
+    public ?int $certificateId = null;
+
+    public function mount(Payment $record): void
+    {
+        $this->record = $record;
+        
+        // Fetch the latest certificate for this payment (to avoid issues with duplicates if any)
+        $certificate = Certificate::where('payment_id', $this->record->id)->latest()->first();
+
+        if (!$certificate) {
+            Notification::make()->title('Error')->body('Este pago no tiene un certificado asociado.')->danger()->send();
+            $this->redirect(PaymentFinalizedResource::getUrl('index'));
+            return;
+        }
+
+        $this->certificateId = $certificate->id;
+        $items = [];
+        if ($certificate->type === 'megapack') {
+            // Load items and mark the first one as main (usually it is)
+            $dbItems = $certificate->items()->orderBy('id')->get();
+            foreach ($dbItems as $index => $item) {
+                $items[] = [
+                    'id' => $item->id,
+                    'is_main' => ($index === 0), // First item is main
+                    'institution_id' => $item->institution_id,
+                    'title' => $item->title,
+                    'category' => $item->category,
+                    'hours' => $item->hours,
+                    'grade' => $item->grade,
+                    'issue_date' => $item->issue_date ? Carbon::parse($item->issue_date)->format('d/m/Y') : null,
+                    'code' => $item->code,
+                    'file_path' => $item->file_path,
+                ];
+            }
+        }
+
+        $this->form->fill([
+            'type' => $certificate->type,
+            'institution_id' => $certificate->institution_id,
+            'title' => $certificate->title,
+            'category' => $certificate->category,
+            'hours' => $certificate->hours,
+            'grade' => $certificate->grade,
+            'issue_date' => $certificate->issue_date ? Carbon::parse($certificate->issue_date)->format('d/m/Y') : null,
+            'code' => $certificate->code,
+            'file_path' => $certificate->file_path,
+            'items' => $items,
+        ]);
+    }
+
+    public function form(Form $form): Form
+    {
+        $paymentItems = is_string($this->record->items) ? json_decode($this->record->items, true) : $this->record->items;
+        $paidTitle = $paymentItems['title'] ?? 'N/A';
+        $paidCourse = $paymentItems['course_title'] ?? 'N/A';
+
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Editar Certificado para: ' . $this->record->user->name)
+                    ->description(new \Illuminate\Support\HtmlString(
+                        'DNI/CE: ' . ($this->record->user->profile->dni_ce ?? 'S/D') . '<br>' .
+                        'Item Pagado: <strong>' . $paidTitle . '</strong><br>' .
+                        'Curso: <strong>' . $paidCourse . '</strong>'
+                    ))
+                    ->schema([
+                        Forms\Components\Radio::make('type')
+                            ->label('Tipo de Certificación')
+                            ->options([
+                                'solo' => 'Solo certificado',
+                                'megapack' => 'Megapack',
+                            ])
+                            ->inline()
+                            ->live()
+                            ->required()
+                            ->disabled()
+                            ->dehydrated(),
+                        
+                        // --- SECCIÓN SOLO CERTIFICADO ---
+                        Forms\Components\Group::make()
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('type') === 'solo')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\Select::make('institution_id')
+                                            ->label('Institución')
+                                            ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(),
+                                        Forms\Components\TextInput::make('title')
+                                            ->label('Título del curso / módulo')
+                                            ->required()
+                                            ->maxLength(255),
+                                    ]),
+                                Forms\Components\Grid::make(3)
+                                    ->schema([
+                                        Forms\Components\Radio::make('category')
+                                            ->label('Categoría')
+                                            ->options([
+                                                'curso' => 'Curso',
+                                                'modular' => 'Modular',
+                                                'diplomado' => 'Diplomado',
+                                            ])
+                                            ->inline()
+                                            ->required(),
+                                        Forms\Components\TextInput::make('hours')
+                                            ->numeric()
+                                            ->label('Horas')
+                                            ->required(),
+                                        Forms\Components\TextInput::make('grade')
+                                            ->label('Nota')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(20)
+                                            ->rules(['integer','between:0,20'])
+                                            ->required(),
+                                    ]),
+                                Forms\Components\Grid::make(3)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('issue_date')
+                                            ->label('Fecha de emisión')
+                                            ->required()
+                                            ->mask('99/99/9999')
+                                            ->placeholder('DD/MM/AAAA')
+                                            ->rules(['date_format:d/m/Y']),
+                                        Forms\Components\TextInput::make('code')
+                                            ->label('Código de certificado')
+                                            ->required()
+                                            ->unique(Certificate::class, 'code', ignorable: fn () => Certificate::find($this->certificateId))
+                                            ->extraAttributes(['style' => 'text-transform: uppercase;'])
+                                            ->dehydrateStateUsing(fn ($state) => strtoupper(trim($state))),
+                                        Forms\Components\FileUpload::make('file_path')
+                                            ->label('Archivo PDF/Imagen')
+                                            ->disk(config('filesystems.default'))
+                                            ->directory('certificates')
+                                            ->acceptedFileTypes(['application/pdf','image/png','image/jpeg','image/jpg','image/webp'])
+                                            ->visibility('private'),
+                                    ]),
+                            ]),
+
+                        // --- SECCIÓN MEGAPACK ---
+                        Forms\Components\Group::make()
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get) => $get('type') === 'megapack')
+                            ->schema([
+                                Forms\Components\Repeater::make('items')
+                                    ->label('Certificados del Pack')
+                                    ->reorderable(false)
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->schema([
+                                        Forms\Components\Hidden::make('id'),
+                                        Forms\Components\Hidden::make('is_main'),
+                                        Forms\Components\Grid::make(2)
+                                            ->schema([
+                                                Forms\Components\Select::make('institution_id')
+                                                    ->label('Institución')
+                                                    ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->required(),
+                                                Forms\Components\TextInput::make('title')
+                                                    ->label('Título del curso / módulo')
+                                                    ->required()
+                                                    ->maxLength(255),
+                                            ]),
+                                        Forms\Components\Grid::make(3)
+                                            ->schema([
+                                                Forms\Components\Radio::make('category')
+                                                    ->label('Categoría')
+                                                    ->options([
+                                                        'curso' => 'Curso',
+                                                        'modular' => 'Modular',
+                                                        'diplomado' => 'Diplomado',
+                                                    ])
+                                                    ->inline()
+                                                    ->required(),
+                                                Forms\Components\TextInput::make('hours')
+                                                    ->numeric()
+                                                    ->label('Horas')
+                                                    ->required()
+                                                    ->disabled(fn (Forms\Get $get) => $get('is_main'))
+                                                    ->dehydrated(),
+                                                Forms\Components\TextInput::make('grade')
+                                                    ->label('Nota')
+                                                    ->numeric()
+                                                    ->minValue(0)
+                                                    ->maxValue(20)
+                                                    ->rules(['integer','between:0,20'])
+                                                    ->required()
+                                                    ->visible(fn (Forms\Get $get) => $get('category') !== 'modular'),
+                                            ]),
+                                        Forms\Components\Grid::make(3)
+                                            ->schema([
+                                                Forms\Components\TextInput::make('issue_date')
+                                                    ->label('Fecha de emisión')
+                                                    ->required()
+                                                    ->mask('99/99/9999')
+                                                    ->placeholder('DD/MM/AAAA')
+                                                    ->rules(['date_format:d/m/Y']),
+                                                Forms\Components\TextInput::make('code')
+                                                    ->label('Código de certificado')
+                                                    ->required()
+                                                    ->unique(CertificateItem::class, 'code', ignoreRecord: true)
+                                                    ->extraAttributes(['style' => 'text-transform: uppercase;'])
+                                                    ->dehydrateStateUsing(fn ($state) => strtoupper(trim($state))),
+                                                Forms\Components\FileUpload::make('file_path')
+                                                    ->label('Archivo')
+                                                    ->disk(config('filesystems.default'))
+                                                    ->directory('certificates')
+                                                    ->acceptedFileTypes(['application/pdf','image/png','image/jpeg','image/jpg','image/webp'])
+                                                    ->visibility('private')
+                                                    ->maxSize(10240)
+                                                    ->nullable(),
+                                            ]),
+                                    ])
+                                    ->collapsible()
+                                    ->grid(1),
+                            ]),
+                    ])
+            ])
+            ->statePath('data');
+    }
+
+    public function save(): void
+    {
+        $formData = $this->form->getState();
+        $certificate = Certificate::find($this->certificateId);
+
+        if ($formData['type'] === 'solo') {
+            $certificate->update([
+                'institution_id' => $formData['institution_id'],
+                'title' => $formData['title'],
+                'category' => $formData['category'],
+                'hours' => $formData['hours'],
+                'grade' => $formData['grade'],
+                'issue_date' => $formData['issue_date'] ? Carbon::createFromFormat('d/m/Y', $formData['issue_date'])->format('Y-m-d') : null,
+                'code' => strtoupper($formData['code']),
+                'file_path' => $formData['file_path'] ?? $certificate->file_path,
+            ]);
+        } else {
+            foreach ($formData['items'] as $itemData) {
+                if (isset($itemData['id'])) {
+                    $item = CertificateItem::find($itemData['id']);
+                    if ($item) {
+                        $item->update([
+                            'institution_id' => $itemData['institution_id'],
+                            'title' => $itemData['title'],
+                            'category' => $itemData['category'],
+                            'hours' => $itemData['hours'] ?? 0,
+                            'grade' => $itemData['grade'] ?? 0,
+                            'issue_date' => $itemData['issue_date'] ? Carbon::createFromFormat('d/m/Y', $itemData['issue_date'])->format('Y-m-d') : null,
+                            'code' => strtoupper($itemData['code']),
+                            'file_path' => $itemData['file_path'] ?? $item->file_path,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        Notification::make()
+            ->title('Certificado actualizado exitosamente')
+            ->success()
+            ->send();
+
+        $this->redirect(PaymentFinalizedResource::getUrl('index'));
+    }
+}

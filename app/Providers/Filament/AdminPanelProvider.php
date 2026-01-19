@@ -19,6 +19,9 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+use Filament\Support\Assets\Css;
+use Filament\Support\Facades\FilamentAsset;
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -27,14 +30,21 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('Administración')
+            ->brandName('EINSSO | Dashboard')
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
+
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Indigo,
+                'gray' => Color::Slate,
             ])
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('Gestión de certificados')
-                    ->collapsed(),
+                    ->label('Gestión Académica'),
+                NavigationGroup::make()
+                    ->label('Pagos'),
+                NavigationGroup::make()
+                    ->label('Seguridad'),
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -44,6 +54,10 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([
                 \App\Filament\Admin\Widgets\DashboardOverview::class,
+                \App\Filament\Admin\Widgets\RevenueChart::class,
+                \App\Filament\Admin\Widgets\StudentsChart::class,
+                \App\Filament\Admin\Widgets\TopCoursesChart::class,
+                \App\Filament\Admin\Widgets\PendingPayments::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -59,5 +73,12 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    public function boot(): void
+    {
+        FilamentAsset::register([
+            Css::make('filament-custom', asset('css/filament-custom.css')),
+        ]);
     }
 }

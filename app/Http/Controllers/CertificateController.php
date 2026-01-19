@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Certificate;
 use App\Models\CertificateItem;
+use App\Models\UserProfile;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,9 +21,23 @@ class CertificateController extends Controller
             ]);
         }
 
-        $item = CertificateItem::with(['institution', 'certificate.user.profile'])
-            ->whereRaw('LOWER(TRIM(code)) = ?', [strtolower($q)])
-            ->first();
+        $qNorm = strtolower(trim($q));
+
+        $item = null;
+        try {
+            $item = CertificateItem::with(['institution', 'certificate.user.profile'])
+                ->where('code_norm', $qNorm)
+                ->first();
+        } catch (QueryException $e) {
+            $item = CertificateItem::with(['institution', 'certificate.user.profile'])
+                ->where('code', $q)
+                ->first();
+            if (! $item) {
+                $item = CertificateItem::with(['institution', 'certificate.user.profile'])
+                    ->whereRaw('LOWER(TRIM(code)) = ?', [$qNorm])
+                    ->first();
+            }
+        }
 
         if ($item) {
             $institutionName = optional($item->institution)->name ?? '';
@@ -45,9 +61,21 @@ class CertificateController extends Controller
             ]);
         }
 
-        $certAny = Certificate::with(['institution', 'user.profile'])
-            ->whereRaw('LOWER(TRIM(code)) = ?', [strtolower($q)])
-            ->first();
+        $certAny = null;
+        try {
+            $certAny = Certificate::with(['institution', 'user.profile'])
+                ->where('code_norm', $qNorm)
+                ->first();
+        } catch (QueryException $e) {
+            $certAny = Certificate::with(['institution', 'user.profile'])
+                ->where('code', $q)
+                ->first();
+            if (! $certAny) {
+                $certAny = Certificate::with(['institution', 'user.profile'])
+                    ->whereRaw('LOWER(TRIM(code)) = ?', [$qNorm])
+                    ->first();
+            }
+        }
 
         if ($certAny) {
             $institutionName = optional($certAny->institution)->name ?? '';
@@ -71,11 +99,18 @@ class CertificateController extends Controller
             ]);
         }
 
+        $userId = UserProfile::query()->where('dni_ce', $q)->value('user_id');
+        if (!$userId) {
+            return response()->json([
+                'userName' => '',
+                'certificates' => [],
+            ]);
+        }
+
         $certs = Certificate::with(['institution', 'items.institution', 'user.profile'])
-            ->whereHas('user.profile', function ($p) use ($q) {
-                $p->where('dni_ce', $q);
-            })
+            ->where('user_id', $userId)
             ->orderByDesc('issue_date')
+            ->orderByDesc('id')
             ->get();
 
         if ($certs->isEmpty()) {
@@ -108,7 +143,12 @@ class CertificateController extends Controller
                     'groupId' => $c->megapack_group_id,
                 ];
             } else {
-                foreach ($c->items as $it) {
+                // Sort items: non-modular first (category != modular), then modular
+                $sortedItems = $c->items->sortBy(function($it) {
+                    return ($it->category === 'modular' ? 1 : 0);
+                });
+
+                foreach ($sortedItems as $it) {
                     $institutionName = optional($it->institution)->name ?? '';
                     $logoPath = optional($it->institution)->logo_path;
                     $results[] = [
@@ -133,6 +173,72 @@ class CertificateController extends Controller
             'userName' => $userName,
             'certificates' => $results,
         ]);
+    }
+
+    public function myCertificates(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([], 401);
+        }
+
+        $certs = Certificate::with(['institution', 'items.institution'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->get();
+
+        if ($certs->isEmpty()) {
+            return response()->json([]);
+        }
+
+        $results = [];
+        foreach ($certs as $c) {
+            if ($c->type === 'solo') {
+                $institutionName = optional($c->institution)->name ?? '';
+                $logoPath = optional($c->institution)->logo_path;
+                $results[] = [
+                    'id' => (string) $c->id,
+                    'courseTitle' => $c->title,
+                    'category' => self::mapCategory($c->category),
+                    'institution' => $institutionName,
+                    'hours' => (int) ($c->hours ?? 0),
+                    'grade' => (int) ($c->grade ?? 0),
+                    'issueDate' => $c->issue_date ? \Carbon\Carbon::parse($c->issue_date)->format('d/m/Y') : '',
+                    'code' => (string) ($c->code ?? ''),
+                    'logo' => $logoPath ? url('/api/institutions/'.$c->institution_id.'/logo') : null,
+                    'filePath' => $c->file_path,
+                    'downloadUrl' => url('/api/certificates/'.$c->id.'/download?type=solo'),
+                    'groupId' => $c->megapack_group_id,
+                ];
+            } else {
+                // Sort items: non-modular first (category != modular), then modular
+                $sortedItems = $c->items->sortBy(function($it) {
+                    return ($it->category === 'modular' ? 1 : 0);
+                });
+
+                foreach ($sortedItems as $it) {
+                    $institutionName = optional($it->institution)->name ?? '';
+                    $logoPath = optional($it->institution)->logo_path;
+                    $results[] = [
+                        'id' => (string) $it->id,
+                        'courseTitle' => $it->title,
+                        'category' => self::mapCategory($it->category),
+                        'institution' => $institutionName,
+                        'hours' => (int) ($it->hours ?? 0),
+                        'grade' => (int) ($it->grade ?? 0),
+                        'issueDate' => $it->issue_date ? \Carbon\Carbon::parse($it->issue_date)->format('d/m/Y') : '',
+                        'code' => (string) ($it->code ?? ''),
+                        'logo' => $logoPath ? url('/api/institutions/'.$it->institution_id.'/logo') : null,
+                        'filePath' => $it->file_path,
+                        'downloadUrl' => url('/api/certificates/'.$it->id.'/download?type=item'),
+                        'groupId' => $c->megapack_group_id,
+                    ];
+                }
+            }
+        }
+
+        return response()->json($results);
     }
 
     private static function mapCategory(?string $cat): ?string

@@ -11,6 +11,7 @@ class Certificate extends Model
 
     protected $fillable = [
         'user_id',
+        'payment_id',
         'type',
         'megapack_group_id',
         'institution_id',
@@ -27,6 +28,11 @@ class Certificate extends Model
         'hours' => 'integer',
         'grade' => 'integer',
     ];
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class);
+    }
 
     public function institution()
     {

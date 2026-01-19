@@ -19,7 +19,8 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // IMPORTANT: When using credentials, you CANNOT use '*'. Must specify exact origins.
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:8080,http://localhost:3000,http://127.0.0.1:8080,http://localhost:8000')),
 
     'allowed_origins_patterns' => [],
 
@@ -29,6 +30,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // MUST be true for Sanctum to work with CSRF cookies
+    'supports_credentials' => true,
 
 ];

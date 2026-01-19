@@ -19,7 +19,7 @@ class InstitutionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Instituciones';
-    protected static ?string $navigationGroup = 'Gestión de certificados';
+    protected static ?string $navigationGroup = 'Gestión Académica';
 
     public static function getModelLabel(): string
     {

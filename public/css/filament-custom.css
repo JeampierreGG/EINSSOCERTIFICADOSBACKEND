@@ -1,0 +1,17 @@
+/* Custom Styles for Filament Admin */
+
+/* Ensure text is visible in dark mode for any native selects or inputs if browser defaults are overridden */
+.dark select {
+    color-scheme: dark !important;
+}
+
+/* Base style for browser dropdowns to ensure legibility in older browsers or specific environments */
+select option {
+    background-color: white;
+    color: black;
+}
+
+.dark select option {
+    background-color: #1f2937 !important;
+    color: #ffffff !important;
+}

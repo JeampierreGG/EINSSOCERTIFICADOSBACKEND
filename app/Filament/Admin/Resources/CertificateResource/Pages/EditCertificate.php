@@ -16,7 +16,25 @@ class EditCertificate extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->label('Eliminar y revertir pago')
+                ->modalHeading('¿Eliminar certificado?')
+                ->modalDescription('Al eliminar el certificado, el pago asociado volverá a estado "Aprobado" en la sección de Pagos Revisados.')
+                ->action(function (\App\Models\Certificate $record) {
+                    $payment = $record->payment;
+                    if ($payment) {
+                        $payment->update(['status' => 'approved']);
+                    }
+                    $record->delete();
+                    
+                    \Filament\Notifications\Notification::make()
+                        ->title('Certificado eliminado')
+                        ->body('El pago ha sido revertido a estado "Aprobado".')
+                        ->success()
+                        ->send();
+
+                    $this->redirect(\App\Filament\Admin\Resources\PaymentFinalizedResource::getUrl('index'));
+                }),
         ];
     }
 

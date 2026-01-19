@@ -27,32 +27,45 @@ class CreateCertificate extends CreateRecord
             $data['title'] = \Illuminate\Support\Str::limit(trim((string) $data['title']), 255, '');
         }
         // Resolver usuario: vincular por nombre (si existe), si no crear con el nombre ingresado
-        if (empty($data['user_id']) && !empty($data['student_name'])) {
-            $studentName = trim((string) $data['student_name']);
-            $studentRoleId = 2; // Estudiante
-            $user = User::query()
-                ->where('is_admin', false)
-                ->where('name', $studentName)
-                ->first();
+        // Resolver usuario: crear o buscar
+        if (empty($data['user_id'])) {
+            $nombres = trim((string) ($data['nombres'] ?? ''));
+            $apellidos = trim((string) ($data['apellidos'] ?? ''));
+            $fullName = trim("$nombres $apellidos");
 
-            if (!$user) {
-                $user = User::create([
-                    'name' => $studentName,
-                    'is_admin' => false,
-                    'role_id' => $studentRoleId,
-                    'email' => null,
-                    'password' => null,
-                ]);
+            // Validar que tengamos nombre para crear
+            if ($fullName !== '') {
+                $studentRoleId = 2; // Estudiante
+                
+                // Intentar buscar por nombre si no tenemos ID (seguridad extra)
+                $user = User::where('is_admin', false)->where('name', $fullName)->first();
+
+                if (!$user) {
+                    $user = User::create([
+                        'name' => $fullName,
+                        'is_admin' => false,
+                        'role_id' => $studentRoleId,
+                        'email' => null, // Opcional o generar uno dummy
+                        'password' => null,
+                    ]);
+                }
+                $data['user_id'] = $user->id;
             }
+        }
 
-            if (!empty($data['dni_ce'])) {
+        // Crear/Actualizar perfil
+        if (!empty($data['user_id'])) {
+            $updates = [];
+            if (!empty($data['nombres'])) $updates['nombres'] = $data['nombres'];
+            if (!empty($data['apellidos'])) $updates['apellidos'] = $data['apellidos'];
+            if (!empty($data['dni_ce'])) $updates['dni_ce'] = $data['dni_ce'];
+
+            if (!empty($updates)) {
                 UserProfile::updateOrCreate(
-                    ['user_id' => $user->id],
-                    ['dni_ce' => $data['dni_ce']]
+                    ['user_id' => $data['user_id']],
+                    $updates
                 );
             }
-
-            $data['user_id'] = $user->id;
         }
 
         if (($data['type'] ?? null) === 'megapack') {
