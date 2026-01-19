@@ -283,6 +283,7 @@ class CourseController extends Controller
             'category' => $course->category,
             'price' => $course->is_free ? 0 : $course->price,
             'instructor' => $course->teacher ? [
+                'id' => $course->teacher->id,
                 'name' => $course->teacher->user->name ?? 'Instructor',
                 'image' => $this->generateUrl($course->teacher->image_path),
                 'bio' => $course->teacher->about,
