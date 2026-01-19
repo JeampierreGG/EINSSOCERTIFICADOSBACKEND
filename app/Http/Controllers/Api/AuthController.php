@@ -19,16 +19,7 @@ class AuthController extends Controller
         // Validación con seguridad robusta
         $validated = $request->validate([
             'email' => 'required|string|email:rfc,dns|max:255|unique:users,email',
-            // Contraseña fuerte: min 8 caracteres, debe contener mayúsculas, minúsculas, números y símbolos
-            'password' => [
-                'required',
-                'string',
-                'min:8',
-                'regex:/[a-z]/',           // al menos una minúscula
-                'regex:/[A-Z]/',           // al menos una mayúscula  
-                'regex:/[0-9]/',           // al menos un número
-                'regex:/[^a-zA-Z0-9]/',    // al menos un símbolo especial (cualquier carácter que no sea letra o número)
-            ],
+            'password' => 'required|string|min:8',
             'nombres' => 'required|string|max:255|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
             'apellidos' => 'required|string|max:255|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/',
             'DNI_CARNET' => 'nullable|string|max:20|unique:user_profiles,dni_ce',
@@ -40,10 +31,9 @@ class AuthController extends Controller
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'nombres.required' => 'El nombre es obligatorio.',
-            'nombres.regex' => 'El nombre solo puede contener letras.',
+            'nombres.regex' => 'El nombre solo puede contener letras y espacios.',
             'apellidos.required' => 'Los apellidos son obligatorios.',
-            'apellidos.regex' => 'Los apellidos solo pueden contener letras.',
-            'DNI_CARNET.unique' => 'Este DNI/Carnet ya está registrado.',
+            'apellidos.regex' => 'Los apellidos solo pueden contener letras y espacios.',
             'DNI_CARNET.unique' => 'Este DNI/Carnet ya está registrado.',
             'phone.required' => 'El número de teléfono es obligatorio.',
         ]);
