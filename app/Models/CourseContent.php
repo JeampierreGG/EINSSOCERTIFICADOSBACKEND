@@ -23,8 +23,5 @@ class CourseContent extends Model
         return $this->belongsTo(Course::class);
     }
 
-    public function lessons()
-    {
-        return $this->hasMany(\App\Models\CourseLesson::class, 'module_id', 'source_id');
-    }
+
 }

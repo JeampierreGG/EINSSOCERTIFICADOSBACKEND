@@ -80,23 +80,11 @@ class ManageCourseModules extends Page implements HasTable
                                     ->columnSpan(1),
                             ]),
 
-                        Forms\Components\Repeater::make('lessons')
-                            ->label('Temas del Módulo')
-                            ->relationship()
-                            ->schema([
-                                Forms\Components\TextInput::make('title')
-                                    ->label('Título del Tema')
-                                    ->required(),
-                                Forms\Components\Hidden::make('type')->default('text'),
-                                Forms\Components\Hidden::make('order')
-                                    ->default(fn ($get, $livewire) => 
-                                        count($livewire->data['lessons'] ?? []) + 1
-                                    ),
-                            ])
-                            ->defaultItems(0)
-                            ->collapsed()
-                            ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
-                            ->addActionLabel('Agregar Tema'),
+                        Forms\Components\Textarea::make('content')
+                            ->label('Contenido del Temario')
+                            ->helperText('Ingrese cada tema como una oración separada por puntos o saltos de línea.')
+                            ->rows(6)
+                            ->columnSpanFull(),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['course_id'] = $this->record->id;
@@ -120,35 +108,29 @@ class ManageCourseModules extends Page implements HasTable
                     ->hidden(fn ($record) => $record->type !== 'module')
                     ->modalHeading('Editar Módulo del Curso')
                     ->record(fn ($record) => CourseModule::find($record->source_id))
+                    ->fillForm(fn ($record) => CourseModule::find($record->source_id)->toArray())
                     ->closeModalByClickingAway(false)
                     ->form([
-                        Forms\Components\TextInput::make('title')
-                            ->label('Título del Módulo')
-                            ->required()
-                            ->maxLength(255),
-
-                        Forms\Components\TextInput::make('order')
-                            ->label('Orden (Número del Módulo)')
-                            ->disabled()
-                            ->dehydrated(),
-
-                        Forms\Components\Repeater::make('lessons')
-                            ->label('Temas del Módulo')
-                            ->relationship()
+                        Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('title')
-                                    ->label('Título del Tema')
-                                    ->required(),
-                                Forms\Components\Hidden::make('type')->default('text'),
+                                    ->label('Título del Módulo')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(1),
+
                                 Forms\Components\TextInput::make('order')
-                                    ->label('Orden')
-                                    ->numeric()
-                                    ->default(0),
-                            ])
-                            ->orderColumn('order')
-                            ->defaultItems(0)
-                            ->collapsed()
-                            ->itemLabel(fn (array $state): ?string => $state['title'] ?? null),
+                                    ->label('Orden (Número del Módulo)')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(1),
+                            ]),
+
+                        Forms\Components\Textarea::make('content')
+                            ->label('Contenido del Temario')
+                            ->helperText('Ingrese cada tema como una oración separada por puntos o saltos de línea.')
+                            ->rows(6)
+                            ->columnSpanFull(),
                     ]),
 
                 Tables\Actions\Action::make('material')

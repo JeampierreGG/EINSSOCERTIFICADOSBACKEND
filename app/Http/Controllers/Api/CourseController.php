@@ -53,7 +53,6 @@ class CourseController extends Controller
         try {
         $course = Course::with([ 
             'teacher.user', 
-            'modules.lessons', 
             'certificateOptions.block'
         ])
         ->where('slug', $slug)
@@ -372,17 +371,11 @@ class CourseController extends Controller
                     'title' => $item->title,
                     'order' => $item->order,
                     'enableDate' => $item->enable_date ? $item->enable_date->format('d/m/Y h:i a') : null,
-                    'lessons' => $item->lessons->map(function ($lesson) {
-                        return [
-                            'id' => $lesson->id,
-                            'title' => $lesson->title,
-                            'type' => 'text',
-                        ];
-                    }),
-                    'topics' => $item->lessons->pluck('title')->toArray(),
+                    'lessons' => [],
+                    'content' => $item->content,
+                    'topics' => [],
                     'videoUrl' => $item->video_url,
-                    'pdfUrl' => $item->pdf_path ? $this->generateUrl($item->pdf_path) : 
-                                (($p = $item->lessons->where('type', 'pdf')->first()) ? $this->generateUrl($p->content_url) : null),
+                    'pdfUrl' => $item->pdf_path ? $this->generateUrl($item->pdf_path) : null,
                     'zoomUrl' => $item->zoom_url,
                     'classTime' => $item->class_time, // Formato "H:i:s" o el que venga DB
                 ];
@@ -485,7 +478,7 @@ class CourseController extends Controller
 
         // Get ALL enrollments (including inactive) so frontend can handle the UI
         $enrollments = \App\Models\CourseEnrollment::where('user_id', $user->id)
-                        ->with(['course.teacher.user', 'course.modules.lessons']) 
+                        ->with(['course.teacher.user'])   
                         ->get();
         
         $courses = $enrollments->map(function ($enrollment) use ($user) {

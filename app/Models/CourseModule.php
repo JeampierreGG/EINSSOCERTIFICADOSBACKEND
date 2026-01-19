@@ -19,6 +19,7 @@ class CourseModule extends Model
         'zoom_url',
         'class_time',
         'video_url',
+        'content',
     ];
 
     protected $casts = [
@@ -31,8 +32,5 @@ class CourseModule extends Model
         return $this->belongsTo(Course::class);
     }
 
-    public function lessons()
-    {
-        return $this->hasMany(CourseLesson::class, 'module_id')->orderBy('order');
-    }
+
 }
