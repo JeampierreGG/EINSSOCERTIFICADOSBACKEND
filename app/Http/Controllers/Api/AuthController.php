@@ -179,17 +179,22 @@ class AuthController extends Controller
     public function updateProfile(Request $request) 
     {
         $user = $request->user();
-        // Aceptamos 'apellidos' unificado. Tambien mantenemos compatibilidad si por error envían separados, pero idealmente usamos 'apellidos'
+        
+        // Validamos email y password también
         $data = $request->validate([
             'nombres' => 'required|string',
-            'apellidos' => 'nullable|string', // Nuevo campo unificado
-            // Mantenemos paterno/materno opcionales por si front viejo los envia, pero priorizamos 'apellidos'
-            'apellido_paterno' => 'nullable|string',
-            'apellido_materno' => 'nullable|string',
-            
+            'apellidos' => 'nullable|string',
             'phone' => 'required|string',
             'DNI_CARNET' => 'nullable|string',
             'country' => 'nullable|string',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico no tiene un formato válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
         ]);
         
         // Determinar apellidos
@@ -198,11 +203,18 @@ class AuthController extends Controller
             $apellidosFinal = trim($data['apellidos']);
         } else {
             // Fallback compatibilidad
-            $apellidosFinal = trim(($data['apellido_paterno'] ?? '') . ' ' . ($data['apellido_materno'] ?? ''));
+            $apellidosFinal = trim(($request->input('apellido_paterno') ?? '') . ' ' . ($request->input('apellido_materno') ?? ''));
         }
 
-        // Update User name
+        // Update User data
         $user->name = trim($data['nombres'] . ' ' . $apellidosFinal);
+        $user->email = strtolower(trim($data['email']));
+        
+        // Update Password if provided
+        if (!empty($data['password'])) {
+            $user->password = Hash::make($data['password']);
+        }
+        
         $user->save();
         
         // Update Profile
@@ -211,9 +223,7 @@ class AuthController extends Controller
         $profile->apellidos = $apellidosFinal;
         $profile->phone = $data['phone'];
         $profile->country = $data['country'] ?? null;
-        if (!empty($data['DNI_CARNET'])) {
-            $profile->dni_ce = $data['DNI_CARNET'];
-        }
+        $profile->dni_ce = !empty($data['DNI_CARNET']) ? $data['DNI_CARNET'] : null;
         $profile->save();
         
         return response()->json([

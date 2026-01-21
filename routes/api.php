@@ -77,3 +77,7 @@ Route::get('/certificates/{id}/view', [CertificateController::class, 'view']);
 Route::get('/teachers', [TeacherController::class, 'index']);
 Route::get('/teachers/{teacher}/image', [TeacherController::class, 'image']);
 Route::get('/teachers/{id}', [TeacherController::class, 'show']);
+
+// Libro de Reclamaciones
+Route::post('/claims', [\App\Http\Controllers\ClaimController::class, 'store']);
+Route::get('/claims/{ticket_code}', [\App\Http\Controllers\ClaimController::class, 'show']);
