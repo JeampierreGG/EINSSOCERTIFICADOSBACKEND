@@ -16,4 +16,8 @@ done
 php artisan optimize:clear || true
 php artisan config:cache || true
 php artisan migrate --force || true
-php-fpm
+if [ $# -gt 0 ]; then
+    exec "$@"
+else
+    exec php-fpm
+fi

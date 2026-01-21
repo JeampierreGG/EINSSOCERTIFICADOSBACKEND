@@ -31,6 +31,22 @@ services:
     networks:
       - appnet
 
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file:
+      - .env
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/var/www/html
+    entrypoint: ["sh", "/var/www/html/docker/entrypoint.sh", "php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
+    networks:
+      - appnet
+
   web:
     image: nginx:1.25-alpine
     depends_on:
