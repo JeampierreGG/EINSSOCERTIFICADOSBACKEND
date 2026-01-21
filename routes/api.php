@@ -30,6 +30,8 @@ Route::middleware('web')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/forgot-password/send-code', [AuthController::class, 'sendResetCode']);
+    Route::post('/forgot-password/reset', [AuthController::class, 'resetPassword']);
     
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [AuthController::class, 'user']);

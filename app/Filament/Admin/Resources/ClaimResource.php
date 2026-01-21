@@ -47,19 +47,17 @@ class ClaimResource extends Resource
                             ->disabled(),
                         Forms\Components\TextInput::make('nombres')
                             ->disabled(),
-                        Forms\Components\TextInput::make('apellido_paterno')
-                            ->disabled(),
-                        Forms\Components\TextInput::make('apellido_materno')
-                            ->disabled(),
+                        Forms\Components\TextInput::make('apellidos')
+                            ->label('Apellidos')
+                            ->formatStateUsing(fn ($record) => $record ? trim("{$record->apellido_paterno} {$record->apellido_materno}") : '')
+                            ->disabled()
+                            ->dehydrated(false),
                         Forms\Components\TextInput::make('telefono')
                             ->disabled(),
                         Forms\Components\TextInput::make('email')
                             ->disabled(),
                         Forms\Components\Textarea::make('domicilio')
                             ->columnSpanFull()
-                            ->disabled(),
-                        Forms\Components\TextInput::make('padre_nombres')
-                            ->label('Padre/Madre (si es menor)')
                             ->disabled(),
                     ])->columns(3),
 
@@ -90,12 +88,14 @@ class ClaimResource extends Resource
                 Forms\Components\Section::make('Gestión del Reclamo (Admin)')
                     ->schema([
                         Forms\Components\Select::make('status')
+                            ->label('Estado')
                             ->options([
                                 'pendiente' => 'Pendiente',
                                 'en_proceso' => 'En Proceso',
                                 'atendido' => 'Atendido',
                                 'rechazado' => 'Rechazado',
                             ])
+                            ->native(false)
                             ->required(),
                         Forms\Components\DateTimePicker::make('fecha_atencion')
                             ->label('Fecha de Atención'),
@@ -127,6 +127,7 @@ class ClaimResource extends Resource
                 Tables\Columns\TextColumn::make('tipo_reclamacion')
                     ->label('Tipo')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->color(fn (string $state): string => match ($state) {
                         'reclamo' => 'danger',
                         'queja' => 'warning',
@@ -135,6 +136,13 @@ class ClaimResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pendiente' => 'Pendiente',
+                        'en_proceso' => 'En Proceso',
+                        'atendido' => 'Atendido',
+                        'rechazado' => 'Rechazado',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'pendiente' => 'gray',
                         'en_proceso' => 'info',
@@ -166,7 +174,7 @@ class ClaimResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()->label('Gestionar'),
+                Tables\Actions\EditAction::make()->label('Responder'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

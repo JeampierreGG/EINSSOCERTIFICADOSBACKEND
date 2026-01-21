@@ -12,8 +12,92 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PasswordResetCodeMail;
+use Carbon\Carbon;
+
 class AuthController extends Controller
 {
+    /**
+     * Envía un código de 6 dígitos al correo para recuperar contraseña.
+     */
+    public function sendResetCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ], [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico no tiene un formato válido.',
+            'email.exists' => 'Este correo electrónico no está registrado.',
+        ]);
+
+        $email = strtolower(trim($request->email));
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Guardar o actualizar código
+        DB::table('password_reset_codes')->updateOrInsert(
+            ['email' => $email],
+            [
+                'code' => $code,
+                'created_at' => now(),
+                'expires_at' => now()->addMinutes(15),
+            ]
+        );
+
+        // Enviar correo
+        try {
+            Mail::to($email)->send(new PasswordResetCodeMail($code));
+            return response()->json(['message' => 'Código de verificación enviado a su correo.']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al enviar el correo.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Valida el código y restablece la contraseña.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'code.required' => 'El código de verificación es obligatorio.',
+            'code.size' => 'El código debe tener 6 dígitos.',
+            'password.required' => 'La nueva contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+        ]);
+
+        $email = $request->email;
+        $code = $request->code;
+
+        $record = DB::table('password_reset_codes')
+            ->where('email', $email)
+            ->where('code', $code)
+            ->first();
+
+        if (!$record) {
+            return response()->json(['message' => 'El código de verificación es incorrecto.'], 422);
+        }
+
+        if (Carbon::parse($record->expires_at)->isPast()) {
+            return response()->json(['message' => 'El código ha expirado. Por favor, solicite uno nuevo.'], 422);
+        }
+
+        // Actualizar contraseña
+        $user = User::where('email', $email)->first();
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Limpiar código usado
+        DB::table('password_reset_codes')->where('email', $email)->delete();
+
+        return response()->json(['message' => 'Su contraseña ha sido restablecida correctamente.']);
+    }
+
     public function register(Request $request)
     {
         // Validación con seguridad robusta
