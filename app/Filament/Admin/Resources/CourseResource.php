@@ -116,15 +116,12 @@ class CourseResource extends Resource
                                     ->options([
                                         'draft' => 'Borrador',
                                         'published' => 'Publicado',
-                                        'proximamente' => 'Próximamente',
-                                        'iniciado' => 'Iniciado',
-                                        'finalizado' => 'Finalizado',
                                         'archived' => 'Archivado',
                                     ])
                                     ->required()
                                     ->default('draft')
                                     ->native(false)
-                                    ->helperText('Solo los cursos NO marcados como Borrador o Archivado serán visibles en la web.'),
+                                    ->helperText('Solo los cursos marcados como Publicado serán visibles en la web, dependiendo de sus fechas.'),
                                 
                                 Forms\Components\TextInput::make('sessions_count')
                                     ->label('Número de Sesiones')
@@ -216,16 +213,11 @@ class CourseResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Estado')
                     ->colors([
-                        'secondary' => 'proximamente',
-                        'success' => ['iniciado', 'published'],
-                        'danger' => 'finalizado',
+                        'success' => 'published',
                         'warning' => 'draft',
                         'gray' => 'archived',
                     ])
                     ->formatStateUsing(fn ($state) => match($state) {
-                        'proximamente' => 'Próximamente',
-                        'iniciado' => 'Iniciado',
-                        'finalizado' => 'Finalizado',
                         'draft' => 'Borrador',
                         'archived' => 'Archivado',
                         'published' => 'Publicado',
@@ -239,9 +231,7 @@ class CourseResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'draft' => 'Borrador',
-                        'proximamente' => 'Próximamente',
-                        'iniciado' => 'Iniciado',
-                        'finalizado' => 'Finalizado',
+                        'published' => 'Publicado',
                         'archived' => 'Archivado',
                     ]),
                 Tables\Filters\SelectFilter::make('category')
