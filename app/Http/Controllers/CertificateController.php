@@ -125,7 +125,8 @@ class CertificateController extends Controller
 
         $results = [];
         foreach ($certs as $c) {
-            if ($c->type === 'solo') {
+            // 1. Incluir el certificado principal si tiene archivo adjunto
+            if (!empty($c->file_path)) {
                 $institutionName = optional($c->institution)->name ?? '';
                 $logoPath = optional($c->institution)->logo_path;
                 $results[] = [
@@ -142,7 +143,10 @@ class CertificateController extends Controller
                     'downloadUrl' => url('/api/certificates/'.$c->id.'/download?type=solo'),
                     'groupId' => $c->megapack_group_id,
                 ];
-            } else {
+            }
+
+            // 2. Incluir los items (módulos) si existen
+            if ($c->items->isNotEmpty()) {
                 // Sort items: non-modular first (category != modular), then modular
                 $sortedItems = $c->items->sortBy(function($it) {
                     return ($it->category === 'modular' ? 1 : 0);
@@ -194,7 +198,8 @@ class CertificateController extends Controller
 
         $results = [];
         foreach ($certs as $c) {
-            if ($c->type === 'solo') {
+            // 1. Incluir el certificado principal si tiene archivo adjunto
+            if (!empty($c->file_path)) {
                 $institutionName = optional($c->institution)->name ?? '';
                 $logoPath = optional($c->institution)->logo_path;
                 $results[] = [
@@ -211,7 +216,10 @@ class CertificateController extends Controller
                     'downloadUrl' => url('/api/certificates/'.$c->id.'/download?type=solo'),
                     'groupId' => $c->megapack_group_id,
                 ];
-            } else {
+            }
+
+            // 2. Incluir los items (módulos) si existen
+            if ($c->items->isNotEmpty()) {
                 // Sort items: non-modular first (category != modular), then modular
                 $sortedItems = $c->items->sortBy(function($it) {
                     return ($it->category === 'modular' ? 1 : 0);
