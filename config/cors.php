@@ -22,7 +22,10 @@ return [
     // IMPORTANT: When using credentials, you CANNOT use '*'. Must specify exact origins.
     'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:8080,http://localhost:3000,http://127.0.0.1:8080,http://localhost:8000')),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        // Permite cualquier origen HTTP/HTTPS para evitar bloqueos en producción
+        '#^https?://.*$#',
+    ],
 
     'allowed_headers' => ['*'],
 
