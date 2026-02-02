@@ -9,5 +9,5 @@ class EvaluationUserExtension extends Model
 {
     use HasFactory;
     
-    protected $fillable = ['user_id', 'evaluation_id', 'extra_attempts'];
+    protected $fillable = ['user_id', 'evaluation_id', 'extra_attempts', 'extended_end_date'];
 }

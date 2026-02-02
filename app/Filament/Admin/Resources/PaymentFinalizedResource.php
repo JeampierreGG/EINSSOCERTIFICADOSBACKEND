@@ -58,7 +58,8 @@ class PaymentFinalizedResource extends Resource
             ])
             ->emptyStateActions([
                 //
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
     
     public static function getPages(): array

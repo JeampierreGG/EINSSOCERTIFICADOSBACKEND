@@ -104,9 +104,11 @@ class EditEvaluation extends Page
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\DateTimePicker::make('start_date')
-                                    ->label('Disponible desde'),
+                                    ->label('Disponible desde')
+                                    ->required(),
                                 Forms\Components\DateTimePicker::make('end_date')
-                                    ->label('Disponible hasta'),
+                                    ->label('Disponible hasta')
+                                    ->required(),
                             ]),
                     ]),
 
@@ -190,8 +192,8 @@ class EditEvaluation extends Page
             }
         }
 
-        if ($totalPoints > 20) {
-            Notification::make()->title("El puntaje total es $totalPoints. No puede exceder de 20 puntos.")->danger()->send();
+        if ($totalPoints !== 20) {
+            Notification::make()->title("El puntaje total es $totalPoints. Debe sumar exactamente 20 puntos.")->danger()->send();
             return;
         }
 

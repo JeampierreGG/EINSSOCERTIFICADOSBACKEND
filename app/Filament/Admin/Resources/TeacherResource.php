@@ -57,9 +57,8 @@ class TeacherResource extends Resource
                         // Fila 2: Sobre el Docente e Imagen
                         Forms\Components\Grid::make(2)
                             ->schema([
-                                Forms\Components\Textarea::make('about')
-                                    ->label('Sobre el Docente')
-                                    ->rows(5),
+                                // About field removed
+
 
                                 Forms\Components\FileUpload::make('image_path')
                                     ->label('Imagen')

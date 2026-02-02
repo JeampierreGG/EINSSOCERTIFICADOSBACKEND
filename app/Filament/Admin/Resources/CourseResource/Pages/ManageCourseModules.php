@@ -145,23 +145,63 @@ class ManageCourseModules extends Page implements HasTable
                     ->closeModalByClickingAway(false)
                     ->icon('heroicon-o-document-text')
                     ->color('success')
-                    ->fillForm(fn ($record) => CourseModule::find($record->source_id)->only(['pdf_path', 'enable_date']))
+                    ->fillForm(function ($record) {
+                        $module = CourseModule::with('materials')->find($record->source_id);
+                        return [
+                            'pdf_path' => $module->pdf_path,
+                            'enable_date' => $module->enable_date,
+                            'materials_list' => $module->materials->map(fn($m) => [
+                                'file_path' => $m->file_path,
+                            ])->toArray(),
+                        ];
+                    })
                     ->form([
-                        Forms\Components\FileUpload::make('pdf_path')
-                            ->label('Material de Clase (PDF)')
-                            ->acceptedFileTypes(['application/pdf'])
-                            ->disk(config('filesystems.default'))
-                            ->directory('course-materials')
-                            ->visibility('private'),
-                        
                         Forms\Components\DatePicker::make('enable_date')
                             ->label('Fecha de Habilitación')
                             ->displayFormat('d/m/Y')
                             ->format('Y-m-d')
                             ->helperText('El material solo se mostrará después de esta fecha'),
+                            
+                        Forms\Components\FileUpload::make('pdf_path')
+                            ->label('Material Principal (PDF)')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->disk(config('filesystems.default'))
+                            ->directory('course-materials')
+                            ->visibility('private'),
+                        
+                        Forms\Components\Section::make('Material Adicional')
+                            ->schema([
+                                Forms\Components\Repeater::make('materials_list')
+                                    ->label('Archivos Adicionales')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('file_path')
+                                            ->label('Archivo')
+                                            ->disk(config('filesystems.default'))
+                                            ->directory('course-materials')
+                                            ->visibility('private')
+                                            ->required(),
+                                    ])
+                                    ->addActionLabel('Agregar otro archivo')
+                                    ->defaultItems(0)
+                            ])
+                            ->collapsible(),
                     ])
                     ->action(function ($record, array $data) {
-                        CourseModule::find($record->source_id)->update($data);
+                        $module = CourseModule::find($record->source_id);
+                        $module->update([
+                            'pdf_path' => $data['pdf_path'],
+                            'enable_date' => $data['enable_date']
+                        ]);
+
+                        // Sync materials (Simple wipe and recreate approach)
+                        $module->materials()->delete();
+                        if (!empty($data['materials_list'])) {
+                            foreach ($data['materials_list'] as $item) {
+                                $module->materials()->create([
+                                    'file_path' => $item['file_path'],
+                                ]);
+                            }
+                        }
                     }),
                 
                 Tables\Actions\Action::make('zoom')
@@ -217,59 +257,33 @@ class ManageCourseModules extends Page implements HasTable
                             \App\Models\Evaluation::find($record->source_id)?->delete();
                         }
                     }),
-
-                // Move Up/Down Actions
-                Tables\Actions\Action::make('move_up')
-                    ->icon('heroicon-o-arrow-up')
-                    ->label('')
-                    ->action(fn ($record) => $this->reorderContent($record, 'up', $this->record->id)),
-                    
-                Tables\Actions\Action::make('move_down')
-                    ->icon('heroicon-o-arrow-down')
-                    ->label('')
-                    ->action(fn ($record) => $this->reorderContent($record, 'down', $this->record->id)),
             ])
+            ->reorderable('order')
             ->defaultSort('order', 'asc');
     }
 
-    protected function reorderContent($record, $direction, $courseId)
+    public function reorderTable(array $order): void
     {
-        // 1. Fetch all items unified and sorted
-        $items = \App\Models\CourseContent::where('course_id', $courseId)
-            ->orderBy('order', 'asc')
-            ->orderBy('created_at', 'asc')
-            ->get();
+        // Fetch all items involved to identify type/source_id
+        $items = \App\Models\CourseContent::whereIn('id', $order)->get()->keyBy('id');
 
-        // 2. Identify current index
-        $currentIndex = $items->search(function($item) use ($record) {
-            return $item->id === $record->id; 
-        });
-
-        if ($currentIndex === false) return;
-
-        // 3. Determine new index
-        $newIndex = $direction === 'up' ? $currentIndex - 1 : $currentIndex + 1;
-
-        // 4. Boundary checks
-        if ($newIndex < 0 || $newIndex >= $items->count()) return;
-
-        // 5. Swap in the collection
-        $temp = $items[$currentIndex];
-        $items[$currentIndex] = $items[$newIndex];
-        $items[$newIndex] = $temp;
-
-        // 6. Persist new order for ALL items to ensure sequence
-        foreach ($items->values() as $index => $item) {
+        foreach ($order as $index => $id) {
             $newOrder = $index + 1;
             
-            // Only update if changed
-            if ($item->order != $newOrder) {
-                 if ($item->type === 'module') {
-                     CourseModule::where('id', $item->source_id)->update(['order' => $newOrder]);
-                 } else {
-                     \App\Models\Evaluation::where('id', $item->source_id)->update(['order' => $newOrder]);
-                 }
+            if (isset($items[$id])) {
+                $item = $items[$id];
+                
+                if ($item->type === 'module') {
+                    CourseModule::where('id', $item->source_id)->update(['order' => $newOrder]);
+                } else {
+                    \App\Models\Evaluation::where('id', $item->source_id)->update(['order' => $newOrder]);
+                }
             }
         }
+        
+        // Optional: Notify user
+        // \Filament\Notifications\Notification::make()->title('Orden actualizado')->success()->send(); 
+        // Be careful with notifications during drag/drop as it might spam or glitch UI if rapid. 
+        // Typically Filament provides its own feedback or it's instant.
     }
 }

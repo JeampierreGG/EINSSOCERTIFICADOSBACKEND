@@ -140,6 +140,7 @@ class PaymentMethodResource extends Resource
                     ->label('Activo')
                     ->boolean(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

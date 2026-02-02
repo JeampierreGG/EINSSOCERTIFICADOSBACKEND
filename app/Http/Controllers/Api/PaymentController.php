@@ -116,6 +116,18 @@ class PaymentController extends Controller
                 'payer_email' => $request->payer_email,
             ]);
 
+            // Send Confirmation Email
+            // Estrictamente al correo del usuario de la cuenta (tabla users), no al payer_email
+            $recipientEmail = $user->email;
+            
+            if ($recipientEmail) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($recipientEmail)->send(new \App\Mail\PaymentConfirmation($payment));
+                } catch (\Exception $mailEx) {
+                    \Illuminate\Support\Facades\Log::error('Error sending payment confirmation email: ' . $mailEx->getMessage());
+                }
+            }
+
             return response()->json(['message' => 'Pago registrado correctamente, espere validación.', 'payment' => $payment], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Payment Error: ' . $e->getMessage());

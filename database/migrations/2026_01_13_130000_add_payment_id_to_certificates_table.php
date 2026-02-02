@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('certificates', function (Blueprint $table) {
-            $table->foreignId('payment_id')->nullable()->after('user_id')->constrained()->nullOnDelete();
-        });
+        // Schema::table('certificates', function (Blueprint $table) {
+        //     $table->foreignId('payment_id')->nullable()->after('user_id')->constrained()->nullOnDelete();
+        // });
     }
 
     /**

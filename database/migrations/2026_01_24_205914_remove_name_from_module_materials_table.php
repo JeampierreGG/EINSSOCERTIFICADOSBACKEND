@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Schema::table('courses', function (Blueprint $table) {
-        //     $table->integer('academic_hours')->default(0)->after('duration_text'); 
-        // });
+        Schema::table('module_materials', function (Blueprint $table) {
+            $table->dropColumn('name');
+        });
     }
 
     /**
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropColumn('academic_hours');
+        Schema::table('module_materials', function (Blueprint $table) {
+            //
         });
     }
 };

@@ -65,6 +65,9 @@ Route::middleware('web')->group(function () {
     // Pagos (Público)
     Route::get('/payment-methods', [\App\Http\Controllers\Api\PaymentController::class, 'index']);
     Route::get('/payment-methods/{id}/qr', [\App\Http\Controllers\Api\PaymentController::class, 'qrImage']);
+
+    // Configuración del Sistema
+    Route::get('/system-settings', [\App\Http\Controllers\Api\SystemSettingController::class, 'index']);
 });
 
 // --------------------------------------------------------------------------

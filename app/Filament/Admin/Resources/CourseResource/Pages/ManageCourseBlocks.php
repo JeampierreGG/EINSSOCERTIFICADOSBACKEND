@@ -74,6 +74,7 @@ class ManageCourseBlocks extends Page implements HasTable
                         ->label('')
                         ->options(function () {
                             return \App\Models\CourseCertificateOption::where('course_id', $this->record->id)
+                                ->orderBy('created_at', 'asc')
                                 ->get()
                                 ->mapWithKeys(function ($option) {
                                     $type = $option->type === 'megapack' ? '🎁 Megapack' : '📜 Solo Certificado';

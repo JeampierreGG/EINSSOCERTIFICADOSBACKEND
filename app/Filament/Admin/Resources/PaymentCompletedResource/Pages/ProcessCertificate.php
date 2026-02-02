@@ -380,7 +380,7 @@ class ProcessCertificate extends Page
                 'payment_id' => $this->record->id,
             ]);
 
-            Certificate::create($certData);
+            $cert = Certificate::create($certData);
         
         } else {
             // Crear Megapack (Certificado Padre + Items)
@@ -406,6 +406,32 @@ class ProcessCertificate extends Page
                     'code' => strtoupper($item['code']),
                     'file_path' => $item['file_path'] ?? null,
                 ]);
+            }
+        }
+
+        // Enviar correo con el certificado adjunto
+        $recipientEmail = $this->record->payer_email ?: $user->email;
+        if ($recipientEmail && $cert) {
+            try {
+                // Ensure relations are loaded for Mailable if needed (items)
+                if ($data['type'] === 'megapack') {
+                    $cert->load('items');
+                }
+                
+                \Illuminate\Support\Facades\Mail::to($recipientEmail)
+                    ->send(new \App\Mail\CertificateSent($cert));
+                    
+                Notification::make()
+                    ->title('Correo enviado con certificado')
+                    ->success()
+                    ->send();
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error enviando certificado por correo: ' . $e->getMessage());
+                Notification::make()
+                    ->title('Certificado generado pero falló el envío del correo')
+                    ->warning()
+                    ->body($e->getMessage())
+                    ->send();
             }
         }
 

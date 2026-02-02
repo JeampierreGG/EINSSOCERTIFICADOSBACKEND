@@ -32,5 +32,10 @@ class CourseModule extends Model
         return $this->belongsTo(Course::class);
     }
 
+    public function materials()
+    {
+        return $this->hasMany(ModuleMaterial::class);
+    }
+
 
 }

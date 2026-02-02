@@ -29,12 +29,18 @@ class ManageCourseEnrollments extends Page implements HasTable
         // Actualización automática de estado:
         // Si existe alguna evaluación VENCIDA (fecha fin < ahora) para la cual el estudiante
         // NO tiene ningún intento registrado, se considera inactivo.
+        // REGLA: Se excluye la PRIMERA evaluación de esta regla.
+        $firstEvalId = \App\Models\Evaluation::where('course_id', $record->id)
+            ->orderBy('id', 'asc') // O por 'order' si existiera, usamos id como fallback de creación
+            ->value('id');
+
         \App\Models\CourseEnrollment::where('course_id', $record->id)
             ->where('status', 'active')
-            ->whereExists(function ($query) {
+            ->whereExists(function ($query) use ($firstEvalId) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('evaluations')
                     ->whereColumn('evaluations.course_id', 'course_enrollments.course_id')
+                    ->where('evaluations.id', '!=', $firstEvalId) // EXCLUIR LA PRIMERA
                     ->where('evaluations.end_date', '<', now())
                     ->whereNotExists(function ($subQuery) {
                         $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
@@ -182,10 +188,20 @@ class ManageCourseEnrollments extends Page implements HasTable
 
                         $data = [];
                         foreach ($evaluations as $eval) {
-                            $attempt = \App\Models\EvaluationAttempt::where('user_id', $userId)
+                            // Find the max score first (Database aggregation is most reliable)
+                            $maxScore = \App\Models\EvaluationAttempt::where('user_id', $userId)
                                 ->where('evaluation_id', $eval->id)
-                                ->orderBy('score', 'desc')
-                                ->first();
+                                ->max('score');
+
+                            // Then retrieve the attempt record that corresponds to that score
+                            $attempt = null;
+                            if ($maxScore !== null) {
+                                $attempt = \App\Models\EvaluationAttempt::where('user_id', $userId)
+                                    ->where('evaluation_id', $eval->id)
+                                    ->where('score', $maxScore)
+                                    ->orderBy('created_at', 'desc') // In case of duplicates, grab latest
+                                    ->first();
+                            }
 
                             $attemptsUsed = \App\Models\EvaluationAttempt::where('user_id', $userId)
                                 ->where('evaluation_id', $eval->id)
@@ -198,11 +214,12 @@ class ManageCourseEnrollments extends Page implements HasTable
                             $data[] = [
                                 'evaluation_id' => $eval->id,
                                 'title' => $eval->title,
-                                'score' => $attempt ? $attempt->score : null,
+                                'score' => $attempt ? (float)$attempt->score : null,
                                 'max_score_id' => $attempt ? $attempt->id : null,
                                 'attempts_used' => $attemptsUsed,
                                 'default_attempts' => $eval->attempts,
                                 'extra_attempts' => $extension ? $extension->extra_attempts : 0,
+                                'extended_end_date' => $extension ? $extension->extended_end_date : null,
                             ];
                         }
                         $form->fill(['evaluations' => $data]);
@@ -213,7 +230,7 @@ class ManageCourseEnrollments extends Page implements HasTable
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
-                            ->columns(5)
+                            ->columns(7)
                             ->schema([
                                 Forms\Components\Hidden::make('evaluation_id'),
                                 Forms\Components\Hidden::make('max_score_id'),
@@ -227,6 +244,7 @@ class ManageCourseEnrollments extends Page implements HasTable
                                 Forms\Components\TextInput::make('score')
                                     ->label('Nota Máxima')
                                     ->numeric()
+                                    ->step(0.01) // Allow decimals
                                     ->maxValue(20)
                                     ->minValue(0)
                                     ->columnSpan(1),
@@ -238,6 +256,10 @@ class ManageCourseEnrollments extends Page implements HasTable
                                     ->minValue(0)
                                     ->live()
                                     ->columnSpan(1),
+                                
+                                Forms\Components\DateTimePicker::make('extended_end_date')
+                                    ->label('Fecha Fin Individual')
+                                    ->columnSpan(2),
 
                                 Forms\Components\Placeholder::make('attempts_info')
                                     ->label('Uso / Total')
@@ -257,7 +279,6 @@ class ManageCourseEnrollments extends Page implements HasTable
                                 if ($item['max_score_id']) {
                                     \App\Models\EvaluationAttempt::where('id', $item['max_score_id'])->update(['score' => $item['score']]);
                                 } else {
-                                    // Create manual attempt if none exists but score is provided
                                     \App\Models\EvaluationAttempt::create([
                                         'user_id' => $userId,
                                         'evaluation_id' => $item['evaluation_id'],
@@ -269,11 +290,18 @@ class ManageCourseEnrollments extends Page implements HasTable
                                 }
                             }
 
-                            // Update Extra Attempts
-                            if (isset($item['extra_attempts'])) {
+                            // Update Extension (Attempts & Date)
+                            $hasExtraAttempts = isset($item['extra_attempts']);
+                            $hasExtendedDate = array_key_exists('extended_end_date', $item); // Check distinct existence to allow null to clear
+
+                            if ($hasExtraAttempts || $hasExtendedDate) {
+                                $updateData = [];
+                                if ($hasExtraAttempts) $updateData['extra_attempts'] = $item['extra_attempts'];
+                                if ($hasExtendedDate) $updateData['extended_end_date'] = $item['extended_end_date'];
+
                                 \App\Models\EvaluationUserExtension::updateOrCreate(
                                     ['user_id' => $userId, 'evaluation_id' => $item['evaluation_id']],
-                                    ['extra_attempts' => $item['extra_attempts']]
+                                    $updateData
                                 );
                             }
                         }

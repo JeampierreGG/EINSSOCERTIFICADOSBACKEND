@@ -84,4 +84,9 @@ class User extends Authenticatable implements FilamentUser, HasName
             'id'
         );
     }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }

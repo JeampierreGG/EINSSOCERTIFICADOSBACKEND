@@ -53,7 +53,8 @@ class CourseController extends Controller
         try {
         $course = Course::with([ 
             'teacher.user', 
-            'certificateOptions.block'
+            'certificateOptions.block',
+            'modules.materials'
         ])
         ->where('slug', $slug)
         ->firstOrFail();
@@ -286,6 +287,10 @@ class CourseController extends Controller
                 'name' => $course->teacher->user->name ?? 'Instructor',
                 'image' => $this->generateUrl($course->teacher->image_path),
                 'bio' => $course->teacher->about,
+                'work_experience' => $course->teacher->work_experience,
+                'academic_degree' => $course->teacher->academic_degree,
+                'title' => $course->teacher->title,
+                'experience' => $course->teacher->experience ?? null,
             ] : null,
             'startDate' => $course->start_date ? $course->start_date->format('d/m/Y') : null,
             'endDate' => $course->end_date ? $course->end_date->format('d/m/Y') : null,
@@ -358,6 +363,13 @@ class CourseController extends Controller
                                                     ->max('attempt_number') : null;
             
             $eval->user_attempts_count = $maxAttemptNumber ?? 0;
+
+            // Calcular la nota más alta obtenida
+            $maxScore = $userId ? \App\Models\EvaluationAttempt::where('user_id', $userId)
+                                                    ->where('evaluation_id', $eval->id)
+                                                    ->max('score') : null;
+            $eval->max_score = $maxScore;
+
             return $eval;
         });
 
@@ -378,15 +390,32 @@ class CourseController extends Controller
                     'pdfUrl' => $item->pdf_path ? $this->generateUrl($item->pdf_path) : null,
                     'zoomUrl' => $item->zoom_url,
                     'classTime' => $item->class_time, // Formato "H:i:s" o el que venga DB
+                    'materials' => $item->materials->map(fn($m) => [
+                        'url' => $this->generateUrl($m->file_path),
+                        'fileName' => basename($m->file_path),
+                    ]),
                 ];
             } else {
                 $evalAttemptsTotal = $item->attempts;
-                if ($userId && $item->attempts > 0) {
+                $endDate = $item->end_date;
+
+                if ($userId) {
                      $extension = \App\Models\EvaluationUserExtension::where('user_id', $userId)
                         ->where('evaluation_id', $item->id)
                         ->first();
+                     
                      if ($extension) {
-                         $evalAttemptsTotal += $extension->extra_attempts;
+                         if ($extension->extra_attempts > 0) {
+                             $evalAttemptsTotal += $extension->extra_attempts;
+                         }
+                         
+                         // Override End Date if extended date exists
+                         if ($extension->extended_end_date) {
+                             $extDate = \Carbon\Carbon::parse($extension->extended_end_date);
+                             // Logic: If extended date is provided, it replaces the original date regardless
+                             // Or should it only extend if it's strictly later? Usually replacing is better for control.
+                             $endDate = $extDate;
+                         }
                      }
                 }
 
@@ -396,9 +425,10 @@ class CourseController extends Controller
                     'title' => $item->title,
                     'order' => $item->order,
                     'startDate' => $item->start_date ? $item->start_date->toIso8601String() : null,
-                    'endDate' => $item->end_date ? $item->end_date->toIso8601String() : null,
+                    'endDate' => $endDate ? $endDate->toIso8601String() : null,
                     'attempts' => $evalAttemptsTotal, // Dynamically adjusted limit
                     'userAttempts' => $item->user_attempts_count,
+                    'grade' => $item->max_score, // Nota más alta
                     'url' => '#',
                 ];
             }

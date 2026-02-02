@@ -385,7 +385,15 @@ class CertificateResource extends Resource
                 Tables\Columns\TextColumn::make('code')->label('Código'),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('course_id')
+                    ->label('Filtrar por Curso')
+                    ->options(fn () => \App\Models\Course::pluck('title', 'id')->toArray())
+                    ->searchable()
+                    ->query(function (Builder $query, array $data) {
+                        if (filled($data['value'])) {
+                            $query->whereHas('payment', fn (Builder $q) => $q->where('course_id', $data['value']));
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

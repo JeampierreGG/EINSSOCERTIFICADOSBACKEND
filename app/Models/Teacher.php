@@ -16,6 +16,7 @@ class Teacher extends Model
         'about',
         'academic_degree',
         'work_experience',
+        'experience',
         'image_path',
     ];
 

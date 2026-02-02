@@ -129,6 +129,17 @@ class StudentResource extends Resource
                     ->getStateUsing(fn (User $record) => (int)($record->solo_certificates_count ?? 0) + (int)($record->megapack_items_count ?? 0))
                     ->sortable(),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('course_id')
+                    ->label('Filtrar por Curso')
+                    ->options(fn () => \App\Models\Course::pluck('title', 'id')->toArray())
+                    ->searchable()
+                    ->query(function (Builder $query, array $data) {
+                        if (filled($data['value'])) {
+                            $query->whereHas('payments', fn (Builder $q) => $q->where('course_id', $data['value']));
+                        }
+                    }),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

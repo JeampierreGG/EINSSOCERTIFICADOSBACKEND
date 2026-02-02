@@ -49,6 +49,15 @@ class ModuleController extends Controller
         }
 
         $path = ltrim(trim($path), '/');
+
+        // Fix S3: Remove bucket name from path if present (because driver handles bucket)
+        // Only if using S3
+        if (config('filesystems.default') === 's3') {
+            $bucket = config('filesystems.disks.s3.bucket');
+            if ($bucket && str_starts_with($path, $bucket . '/')) {
+                $path = substr($path, strlen($bucket) + 1);
+            }
+        }
         $disk = Storage::disk(config('filesystems.default'));
 
         // Estrategia de Fuerza Bruta: Probar variantes comunes de encoding
