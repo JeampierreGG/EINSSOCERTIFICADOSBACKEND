@@ -71,6 +71,11 @@ class EvaluationController extends Controller
 
         $data['attempts_max'] = $evaluation->attempts + $extraAttempts;
 
+        // Override End Date if extended
+        if (isset($extension) && $extension->extended_end_date) {
+            $data['end_date'] = $extension->extended_end_date;
+        }
+
         return response()->json($data);
     }
 

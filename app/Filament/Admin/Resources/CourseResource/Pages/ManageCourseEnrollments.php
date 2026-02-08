@@ -264,7 +264,7 @@ class ManageCourseEnrollments extends Page implements HasTable
                                 Forms\Components\Placeholder::make('attempts_info')
                                     ->label('Uso / Total')
                                     ->content(fn (Forms\Get $get) => 
-                                        $get('attempts_used') . ' / ' . ($get('default_attempts') + ($get('extra_attempts') ?? 0))
+                                        $get('attempts_used') . ' / ' . ($get('default_attempts') + ((int)$get('extra_attempts')))
                                     )
                                     ->columnSpan(1),
 
@@ -291,16 +291,28 @@ class ManageCourseEnrollments extends Page implements HasTable
                             }
 
                             // Update Extension (Attempts & Date)
-                            $hasExtraAttempts = isset($item['extra_attempts']);
-                            $hasExtendedDate = array_key_exists('extended_end_date', $item); // Check distinct existence to allow null to clear
+                            // Update Extension (Attempts & Date)
+                            $keyExistsExtra = array_key_exists('extra_attempts', $item);
+                            $keyExistsDate  = array_key_exists('extended_end_date', $item);
 
-                            if ($hasExtraAttempts || $hasExtendedDate) {
+                            if ($keyExistsExtra || $keyExistsDate) {
                                 $updateData = [];
-                                if ($hasExtraAttempts) $updateData['extra_attempts'] = $item['extra_attempts'];
-                                if ($hasExtendedDate) $updateData['extended_end_date'] = $item['extended_end_date'];
+                                
+                                if ($keyExistsExtra) {
+                                    $val = $item['extra_attempts'];
+                                    // Si está vacío o null, forzar 0
+                                    $updateData['extra_attempts'] = ($val === '' || $val === null) ? 0 : $val;
+                                }
+                                
+                                if ($keyExistsDate) {
+                                    $updateData['extended_end_date'] = $item['extended_end_date'];
+                                }
 
                                 \App\Models\EvaluationUserExtension::updateOrCreate(
-                                    ['user_id' => $userId, 'evaluation_id' => $item['evaluation_id']],
+                                    [
+                                        'user_id' => $userId, 
+                                        'evaluation_id' => $item['evaluation_id']
+                                    ],
                                     $updateData
                                 );
                             }
