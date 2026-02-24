@@ -35,7 +35,6 @@ class EditProcessCertificate extends Page
     {
         $this->record = $record;
         
-        // Fetch the latest certificate for this payment (to avoid issues with duplicates if any)
         $certificate = Certificate::where('payment_id', $this->record->id)->latest()->first();
 
         if (!$certificate) {
@@ -47,7 +46,6 @@ class EditProcessCertificate extends Page
         $this->certificateId = $certificate->id;
         $items = [];
         if ($certificate->type === 'megapack') {
-            // Load items and mark the first one as main (usually it is)
             $dbItems = $certificate->items()->orderBy('id')->get();
             foreach ($dbItems as $index => $item) {
                 $items[] = [
@@ -64,9 +62,28 @@ class EditProcessCertificate extends Page
                 ];
             }
         }
+        
+        // Backward compatibility for type 'solo' -> map to 'cip' or 'einsso' based on institution_id
+        $mappedType = $certificate->type;
+        if ($mappedType === 'solo') {
+            // Try to infer from institution
+            if ($certificate->institution_id === Institution::cip()?->id) {
+                $mappedType = 'cip';
+            } elseif ($certificate->institution_id === Institution::einsso()?->id) {
+                $mappedType = 'einsso';
+            } else {
+                // If neither (legacy data), maybe check name? Or default to einsso (modular) if no specific logic
+                $instName = Institution::find($certificate->institution_id)?->name;
+                if ($instName && (stripos($instName, 'Colegio') !== false || stripos($instName, 'CIP') !== false)) {
+                     $mappedType = 'cip';
+                } else {
+                     $mappedType = 'einsso';
+                }
+            }
+        }
 
         $this->form->fill([
-            'type' => $certificate->type,
+            'type' => $mappedType,
             'institution_id' => $certificate->institution_id,
             'title' => $certificate->title,
             'category' => $certificate->category,
@@ -97,28 +114,29 @@ class EditProcessCertificate extends Page
                         Forms\Components\Radio::make('type')
                             ->label('Tipo de Certificación')
                             ->options([
-                                'solo' => 'Solo certificado',
-                                'megapack' => 'Megapack',
+                                'cip'      => '🏛️ Colegio de Ingenieros del Perú',
+                                'einsso'   => '📜 Einsso Consultores (Modular)',
+                                'megapack' => '🎁 Megapack',
                             ])
                             ->inline()
                             ->live()
                             ->required()
-                            ->disabled()
+                            ->disabled() // No permitir cambiar tipo en edición (complejo migrar datos)
                             ->dehydrated(),
                         
-                        // --- SECCIÓN SOLO CERTIFICADO ---
+                        // --- SECCIÓN SOLO CERTIFICADO (CIP / EINSSO) ---
                         Forms\Components\Group::make()
                             ->columnSpanFull()
-                            ->visible(fn (Get $get) => $get('type') === 'solo')
+                            ->visible(fn (Get $get) => in_array($get('type'), ['cip', 'einsso']))
                             ->schema([
                                 Forms\Components\Grid::make(2)
                                     ->schema([
                                         Forms\Components\Select::make('institution_id')
                                             ->label('Institución')
                                             ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
+                                            ->required()
+                                            ->disabled() // Read-only
+                                            ->dehydrated(),
                                         Forms\Components\TextInput::make('title')
                                             ->label('Título del curso / módulo')
                                             ->required()
@@ -188,9 +206,9 @@ class EditProcessCertificate extends Page
                                                 Forms\Components\Select::make('institution_id')
                                                     ->label('Institución')
                                                     ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->required(),
+                                                    ->required()
+                                                    ->disabled() // Read-only
+                                                    ->dehydrated(),
                                                 Forms\Components\TextInput::make('title')
                                                     ->label('Título del curso / módulo')
                                                     ->required()
@@ -259,24 +277,38 @@ class EditProcessCertificate extends Page
         $formData = $this->form->getState();
         $certificate = Certificate::find($this->certificateId);
 
-        if ($formData['type'] === 'solo') {
-            $certificate->update([
-                'institution_id' => $formData['institution_id'],
-                'title' => $formData['title'],
-                'category' => $formData['category'],
-                'hours' => $formData['hours'],
-                'grade' => $formData['grade'],
-                'issue_date' => $formData['issue_date'] ? Carbon::createFromFormat('d/m/Y', $formData['issue_date'])->format('Y-m-d') : null,
-                'code' => strtoupper($formData['code']),
-                'file_path' => $formData['file_path'] ?? $certificate->file_path,
-            ]);
+        // Normalize type (legacy 'solo' -> new 'cip'/'einsso')
+        // We cannot easily change the type in DB if it was 'solo', 
+        // but we can update the other fields.
+        // Ideally we should update the 'type' in DB to match new schema if it's 'solo'
+        
+        $dbData = [
+            'institution_id' => $formData['institution_id'] ?? $certificate->institution_id,
+            'title' => $formData['title'] ?? $certificate->title,
+            'category' => $formData['category'] ?? $certificate->category,
+            'hours' => $formData['hours'] ?? $certificate->hours,
+            'grade' => $formData['grade'] ?? $certificate->grade,
+            'issue_date' => isset($formData['issue_date']) && $formData['issue_date'] ? Carbon::createFromFormat('d/m/Y', $formData['issue_date'])->format('Y-m-d') : null,
+            'code' => isset($formData['code']) ? strtoupper($formData['code']) : $certificate->code,
+            'file_path' => $formData['file_path'] ?? $certificate->file_path,
+        ];
+        
+        // If the form type is one of the new ones and DB is 'solo', update it
+        if ($formData['type'] !== 'megapack' && $certificate->type === 'solo') {
+             $dbData['type'] = $formData['type']; // 'cip' or 'einsso'
+        }
+
+        if ($formData['type'] !== 'megapack') {
+            $certificate->update($dbData);
         } else {
+            // For megapack, we update items
             foreach ($formData['items'] as $itemData) {
                 if (isset($itemData['id'])) {
                     $item = CertificateItem::find($itemData['id']);
                     if ($item) {
                         $item->update([
-                            'institution_id' => $itemData['institution_id'],
+                            // institution_id is read-only in form, assume it doesn't change or use value if present
+                            'institution_id' => $itemData['institution_id'] ?? $item->institution_id,
                             'title' => $itemData['title'],
                             'category' => $itemData['category'],
                             'hours' => $itemData['hours'] ?? 0,

@@ -77,9 +77,8 @@ class ManageCourseBlocks extends Page implements HasTable
                                 ->orderBy('created_at', 'asc')
                                 ->get()
                                 ->mapWithKeys(function ($option) {
-                                    $type = $option->type === 'megapack' ? '🎁 Megapack' : '📜 Solo Certificado';
-                                    $price = 'S/ ' . number_format($option->price, 2);
-                                    return [$option->id => "{$type} - {$option->title} ({$price})"];
+                                    $price = number_format($option->price, 2);
+                                    return [$option->id => "{$option->title} (S/ {$price})"];
                                 });
                         })
                         ->columns(1)
@@ -141,12 +140,6 @@ class ManageCourseBlocks extends Page implements HasTable
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('payments')
-                    ->label('Pagos')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->url(fn (CertificationBlock $record): string => \App\Filament\Admin\Resources\CourseResource::getUrl('block-payments', ['record' => $this->record->id, 'blockId' => $record->id])),
-                
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar Bloque de Disponibilidad')
                     ->closeModalByClickingAway(false)

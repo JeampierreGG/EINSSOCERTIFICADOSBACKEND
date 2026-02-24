@@ -11,6 +11,8 @@ class ManageSystemSettings extends EditRecord
 {
     protected static string $resource = SystemSettingResource::class;
 
+    protected static ?string $title = 'Configuración del Sistema';
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         // Aseguramos que siempre estemos editando el primer registro (o creándolo si no existe)

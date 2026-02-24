@@ -68,6 +68,9 @@ Route::middleware('web')->group(function () {
 
     // Configuración del Sistema
     Route::get('/system-settings', [\App\Http\Controllers\Api\SystemSettingController::class, 'index']);
+
+    // Aliados (logos visibles en páginas públicas)
+    Route::get('/allies', [\App\Http\Controllers\Api\AllyController::class, 'index']);
 });
 
 // --------------------------------------------------------------------------

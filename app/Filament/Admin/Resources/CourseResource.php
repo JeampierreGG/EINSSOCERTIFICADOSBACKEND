@@ -284,6 +284,9 @@ class CourseResource extends Resource
             'edit-evaluation' => Pages\EditEvaluation::route('/{record}/evaluations/{evaluation}/edit'),
             'blocks' => Pages\ManageCourseBlocks::route('/{record}/blocks'),
             'block-payments' => Pages\ViewBlockPayments::route('/{record}/blocks/{blockId}/payments'),
+            'certificate-payments' => Pages\ViewCertificatePayments::route('/{record}/certificates/{certOptionId}/payments'),
+            'payments' => Pages\ManageCoursePayments::route('/{record}/payments'),
+            'payments.process' => Pages\ProcessPayment::route('/{record}/payments/{payment}/process'),
         ];
     }
 }

@@ -97,17 +97,53 @@ class CertificateResource extends Resource
                         Forms\Components\Radio::make('type')
                             ->label('Tipo')
                             ->options([
-                                'solo' => 'Solo certificado',
+                                'cip'      => 'Colegio de Ingenieros del Perú',
+                                'einsso'   => 'Einsso Consultores',
                                 'megapack' => 'Megapack',
                             ])
                             ->inline()
                             ->required()
                             ->live()
-                            ->disabled(fn ($record) => filled($record)),
+                            ->disabled(fn ($record) => filled($record))
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                if (!$state) return;
+
+                                $cipId = Institution::where('slug', 'cip')->value('id');
+                                $einssoId = Institution::where('slug', 'einsso')->value('id');
+
+                                if ($state === 'cip') {
+                                    $set('institution_id', $cipId);
+                                    $set('items', []);
+                                } elseif ($state === 'einsso') {
+                                    $set('institution_id', $einssoId);
+                                    $set('items', []);
+                                } elseif ($state === 'megapack') {
+                                    $set('institution_id', null);
+                                    
+                                    // Pre-fill 5 items
+                                    $items = [];
+                                    
+                                    // 1. CIP
+                                    $items[] = [
+                                        'institution_id' => $cipId,
+                                        'custom_label' => 'Certificado CIP',
+                                    ];
+                                    
+                                    // 2-5. Einsso
+                                    for ($i = 1; $i <= 4; $i++) {
+                                        $items[] = [
+                                            'institution_id' => $einssoId,
+                                            'custom_label' => 'Certificado Modular ' . $i,
+                                        ];
+                                    }
+                                    
+                                    $set('items', $items);
+                                }
+                            }),
                     ]),
                 Forms\Components\Group::make()
                     ->columnSpanFull()
-                    ->visible(fn (Forms\Get $get) => $get('type') === 'solo')
+                    ->visible(fn (Forms\Get $get) => in_array($get('type'), ['solo', 'cip', 'einsso']))
                     ->schema([
                         Forms\Components\Grid::make(2)
                             ->schema([
@@ -116,20 +152,13 @@ class CertificateResource extends Resource
                                     ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
                                     ->searchable()
                                     ->preload()
-                                    ->required(),
+                                    ->required()
+                                    ->disabled()
+                                    ->dehydrated(),
                                 Forms\Components\TextInput::make('title')->label('Título del curso / módulo')->required()->maxLength(255),
                             ]),
                         Forms\Components\Grid::make(3)
                             ->schema([
-                                Forms\Components\Radio::make('category')
-                                    ->label('Categoría')
-                                    ->options([
-                                        'curso' => 'Curso',
-                                        'modular' => 'Modular',
-                                        'diplomado' => 'Diplomado',
-                                    ])
-                                    ->inline()
-                                    ->required(),
                                 Forms\Components\TextInput::make('hours')
                                     ->numeric()
                                     ->label('Horas')
@@ -241,8 +270,12 @@ class CertificateResource extends Resource
                             ->relationship()
                             ->label('Certificados')
                             ->addActionLabel('Agregar certificado')
-                          ->defaultItems(4)
+                            ->defaultItems(5)
+                            ->collapsible()
+                            ->grid(1)
+                            ->itemLabel(fn (array $state): ?string => $state['custom_label'] ?? null)
                             ->schema([
+                                Forms\Components\Hidden::make('custom_label'),
                                 Forms\Components\Grid::make(2)
                                     ->schema([
                                         Forms\Components\Select::make('institution_id')
@@ -250,20 +283,13 @@ class CertificateResource extends Resource
                                             ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
                                             ->searchable()
                                             ->preload()
-                                            ->required(),
+                                            ->required()
+                                            ->disabled()
+                                            ->dehydrated(),
                                         Forms\Components\TextInput::make('title')->label('Título del curso / módulo')->required()->maxLength(255),
                                     ]),
                                 Forms\Components\Grid::make(3)
                                     ->schema([
-                                        Forms\Components\Radio::make('category')
-                                            ->label('Categoría')
-                                            ->options([
-                                                'curso' => 'Curso',
-                                                'modular' => 'Modular',
-                                                'diplomado' => 'Diplomado',
-                                            ])
-                                            ->inline()
-                                            ->required(),
                                         Forms\Components\TextInput::make('hours')
                                             ->numeric()
                                             ->label('Horas')
@@ -377,7 +403,23 @@ class CertificateResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')->label('Nombre')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('user.profile.dni_ce')->label('DNI/CE')->searchable(),
-                Tables\Columns\TextColumn::make('type')->label('Tipo')->sortable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Tipo')
+                    ->sortable()
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'cip'      => 'CIP',
+                        'einsso'   => 'Einsso',
+                        'megapack' => 'Megapack',
+                        'solo'     => 'Solo',
+                        default    => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'cip'      => 'danger',
+                        'einsso'   => 'primary',
+                        'megapack' => 'success',
+                        default    => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('institution.name')->label('Institución')->searchable(),
                 Tables\Columns\TextColumn::make('title')->label('Título')->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('category')->label('Categoría')->toggleable(isToggledHiddenByDefault: true),

@@ -23,6 +23,11 @@ class PaymentCompletedResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $slug = 'payment-reviewed';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function canCreate(): bool
     {
         return false;

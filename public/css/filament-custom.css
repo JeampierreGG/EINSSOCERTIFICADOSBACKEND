@@ -1,17 +1,100 @@
 /* Custom Styles for Filament Admin */
 
-/* Ensure text is visible in dark mode for any native selects or inputs if browser defaults are overridden */
-.dark select {
+/* Force browser to use dark native controls (scrollbars, select dropdowns) when in dark mode */
+html.dark {
     color-scheme: dark !important;
 }
 
-/* Base style for browser dropdowns to ensure legibility in older browsers or specific environments */
-select option {
-    background-color: white;
-    color: black;
+/* ============================================================
+   PAGINATION SELECT – DARK MODE FIX
+   El select nativo hereda bg-transparent del componente Filament,
+   lo que hace que el navegador use su fondo blanco por defecto.
+   Aquí forzamos fondo oscuro, color de texto claro y color-scheme
+   para que las opciones del dropdown también sean oscuras.
+   ============================================================ */
+
+/* Wrapper que envuelve el select de registros por página */
+html.dark .fi-pagination .fi-input-wrapper,
+html.dark .fi-ta-pagination .fi-input-wrapper {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    border-color: rgb(55 65 81) !important;
+    /* gray-700 */
 }
 
-.dark select option {
-    background-color: #1f2937 !important;
-    color: #ffffff !important;
+/* El propio elemento <select> */
+html.dark .fi-pagination .fi-select-input,
+html.dark .fi-ta-pagination .fi-select-input,
+html.dark .fi-pagination select,
+html.dark .fi-ta-pagination select {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    color: rgb(243 244 246) !important;
+    /* gray-100 */
+    color-scheme: dark !important;
+    /* fixes native dropdown options */
+    border-color: rgb(55 65 81) !important;
+    /* gray-700 */
+}
+
+/* Las opciones dentro del select nativo */
+html.dark .fi-pagination select option,
+html.dark .fi-ta-pagination select option {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    color: rgb(243 244 246) !important;
+    /* gray-100 */
+}
+
+/* ============================================================
+   FILTER SELECT – DARK MODE FIX
+   El <select> del panel de filtros (p.ej. "Estado") hereda
+   bg-transparent y en dark mode el navegador usa fondo blanco
+   nativo. Aplicamos los mismos colores que el select de paginación.
+   ============================================================ */
+
+/* Wrapper que envuelve el select de filtros */
+html.dark .fi-ta-filters-form .fi-input-wrapper,
+html.dark .fi-filters .fi-input-wrapper,
+html.dark [id$="-filter-form"] .fi-input-wrapper,
+html.dark .fi-fo-field-wrp .fi-input-wrapper {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    border-color: rgb(55 65 81) !important;
+    /* gray-700 */
+}
+
+/* El propio elemento <select> dentro de filtros */
+html.dark .fi-ta-filters-form .fi-select-input,
+html.dark .fi-ta-filters-form select,
+html.dark .fi-filters .fi-select-input,
+html.dark .fi-filters select,
+html.dark [id$="-filter-form"] .fi-select-input,
+html.dark [id$="-filter-form"] select,
+html.dark .fi-fo-field-wrp select {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    color: rgb(243 244 246) !important;
+    /* gray-100 */
+    color-scheme: dark !important;
+    /* fixes native dropdown options */
+    border-color: rgb(55 65 81) !important;
+    /* gray-700 */
+}
+
+/* Las opciones dentro del select nativo de filtros */
+html.dark .fi-ta-filters-form select option,
+html.dark .fi-filters select option,
+html.dark [id$="-filter-form"] select option,
+html.dark .fi-fo-field-wrp select option {
+    background-color: rgb(31 41 55) !important;
+    /* gray-800 */
+    color: rgb(243 244 246) !important;
+    /* gray-100 */
+}
+
+/* Placeholder fix */
+html.dark ::placeholder {
+    color: #9ca3af !important;
+    opacity: 1;
 }

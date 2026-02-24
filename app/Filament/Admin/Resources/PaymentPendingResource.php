@@ -21,6 +21,11 @@ class PaymentPendingResource extends Resource
     protected static ?string $navigationGroup = 'Pagos';
     protected static ?string $navigationLabel = 'Pendientes';
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
     protected static ?string $slug = 'payment-pending';
 
     public static function getEloquentQuery(): Builder

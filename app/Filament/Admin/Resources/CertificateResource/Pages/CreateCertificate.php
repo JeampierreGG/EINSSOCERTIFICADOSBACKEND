@@ -26,9 +26,20 @@ class CreateCertificate extends CreateRecord
         if (!empty($data['title'])) {
             $data['title'] = \Illuminate\Support\Str::limit(trim((string) $data['title']), 255, '');
         }
+
+        // --- Helper para inferir categoría ---
+        $inferCategory = function ($institutionId) {
+            if (!$institutionId) return 'curso';
+            $inst = \App\Models\Institution::find($institutionId);
+            if (!$inst) return 'curso';
+            // Si es Einsso -> modular, sino curso (incluye CIP)
+            return ($inst->slug === 'einsso') ? 'modular' : 'curso';
+        };
+
         // Resolver usuario: vincular por nombre (si existe), si no crear con el nombre ingresado
         // Resolver usuario: crear o buscar
         if (empty($data['user_id'])) {
+            // ... (Lógica de usuario igual) ...
             $nombres = trim((string) ($data['nombres'] ?? ''));
             $apellidos = trim((string) ($data['apellidos'] ?? ''));
             $fullName = trim("$nombres $apellidos");
@@ -46,7 +57,7 @@ class CreateCertificate extends CreateRecord
                         'is_admin' => false,
                         'role_id' => $studentRoleId,
                         'email' => null, // Opcional o generar uno dummy
-                        'password' => null,
+                        'password' => null, // Opcional
                     ]);
                 }
                 $data['user_id'] = $user->id;
@@ -78,6 +89,7 @@ class CreateCertificate extends CreateRecord
                     'user_id' => $data['user_id'] ?? null,
                     'type' => 'megapack',
                     'megapack_group_id' => $groupId,
+                    'category' => 'curso',
                 ]);
             }
 
@@ -89,7 +101,7 @@ class CreateCertificate extends CreateRecord
                 'megapack_group_id' => $groupId,
                 'institution_id' => $first['institution_id'] ?? null,
                 'title' => isset($first['title']) ? \Illuminate\Support\Str::limit(trim((string) $first['title']), 255, '') : null,
-                'category' => $first['category'] ?? null,
+                'category' => $inferCategory($first['institution_id'] ?? null),
                 'hours' => $first['hours'] ?? null,
                 'grade' => $first['grade'] ?? null,
                 'issue_date' => $first['issue_date'] ?? null,
@@ -105,7 +117,7 @@ class CreateCertificate extends CreateRecord
                     'megapack_group_id' => $groupId,
                     'institution_id' => $item['institution_id'] ?? null,
                     'title' => isset($item['title']) ? \Illuminate\Support\Str::limit(trim((string) $item['title']), 255, '') : null,
-                    'category' => $item['category'] ?? null,
+                    'category' => $inferCategory($item['institution_id'] ?? null),
                     'hours' => $item['hours'] ?? null,
                     'grade' => $item['grade'] ?? null,
                     'issue_date' => $item['issue_date'] ?? null,
@@ -117,27 +129,21 @@ class CreateCertificate extends CreateRecord
             return $main;
         }
 
-        // Creación manual para 'solo' asegurando DNI/CE y unicidad de código (validada en formulario)
+        // Creación manual
+        $cat = $inferCategory($data['institution_id'] ?? null);
+
         $cert = Certificate::create([
             'user_id' => $data['user_id'] ?? null,
-            'type' => 'solo',
+            'type' => ($data['type'] ?? 'solo'),
             'institution_id' => $data['institution_id'] ?? null,
             'title' => $data['title'] ?? null,
-            'category' => $data['category'] ?? null,
+            'category' => $cat,
             'hours' => $data['hours'] ?? null,
             'grade' => $data['grade'] ?? null,
             'issue_date' => $data['issue_date'] ?? null,
             'code' => $data['code'] ?? null,
             'file_path' => $data['file_path'] ?? null,
         ]);
-
-        // Sincronizar perfil del usuario existente
-        if (!empty($data['user_id']) && !empty($data['dni_ce'])) {
-            UserProfile::updateOrCreate(
-                ['user_id' => $data['user_id']],
-                ['dni_ce' => $data['dni_ce']]
-            );
-        }
 
         return $cert;
     }

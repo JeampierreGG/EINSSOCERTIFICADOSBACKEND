@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Filament\Admin\Resources\PaymentCompletedResource\Pages;
+namespace App\Filament\Admin\Resources\CourseResource\Pages;
 
-use App\Filament\Admin\Resources\PaymentCompletedResource;
+use App\Filament\Admin\Resources\CourseResource;
 use App\Models\Certificate;
 use App\Models\CertificateItem;
 use App\Models\Institution;
 use App\Models\Payment;
+use App\Models\Course;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -15,64 +16,29 @@ use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\Storage;
 use Closure;
 
-class ProcessCertificate extends Page
+class ProcessPayment extends Page
 {
-    protected static string $resource = PaymentCompletedResource::class;
+    protected static string $resource = CourseResource::class;
 
-    protected static string $view = 'filament.admin.resources.payment-completed-resource.pages.process-certificate';
+    protected static string $view = 'filament.admin.resources.course-resource.pages.process-payment';
 
-    public Payment $record;
+    public Payment $payment;
+    public Course $course;
 
     public ?array $data = [];
-
-    protected function getFormActions(): array
-    {
-        return [
-            $this->getCreateFormAction(),
-            $this->getCancelFormAction(),
-        ];
-    }
-
-    protected function getCreateFormAction(): \Filament\Actions\Action
-    {
-        return \Filament\Actions\Action::make('create')
-            ->label('Generar Certificado')
-            ->submit('create')
-            ->keyBindings(['mod+s']);
-    }
-
-    protected function getCancelFormAction(): \Filament\Actions\Action
-    {
-        return \Filament\Actions\Action::make('cancel')
-            ->label(__('filament-panels::resources/pages/create-record.form.actions.cancel.label'))
-            ->url($this->getCancelUrl())
-            ->color('gray');
-    }
-
-    public function getCancelUrl(): string
-    {
-        if ($this->record->course_id) {
-             return \App\Filament\Admin\Resources\CourseResource::getUrl('payments', ['record' => $this->record->course_id]);
-        }
-        return PaymentCompletedResource::getUrl('index');
-    }
 
     public function getTitle(): string 
     {
         return 'Generar Certificado';
     }
 
-    public function getBreadcrumb(): string
+    public function mount(Course $record, Payment $payment): void
     {
-        return 'Generar Certificado';
-    }
-
-    public function mount(Payment $record): void
-    {
-        $this->record = $record;
+        $this->course = $record;
+        $this->payment = $payment;
         
         // Extract payment item details
-        $items = is_string($this->record->items) ? json_decode($this->record->items, true) : $this->record->items;
+        $items = is_string($this->payment->items) ? json_decode($this->payment->items, true) : $this->payment->items;
         
         // 1. Intentar identificar la Opción de Certificación específica
         $optionId = $items['id'] ?? null;
@@ -83,78 +49,77 @@ class ProcessCertificate extends Page
         }
 
         // Fallback: Buscar por título si no hay ID o no se encontró
-        if (!$option && !empty($items['title']) && $this->record->course_id) {
-            $option = \App\Models\CourseCertificateOption::where('course_id', $this->record->course_id)
+        if (!$option && !empty($items['title']) && $this->payment->course_id) {
+            $option = \App\Models\CourseCertificateOption::where('course_id', $this->payment->course_id)
                 ->where('title', $items['title'])
                 ->first();
         }
 
-        // 2. Determinar el Tipo con normalización robusta
-        $detectedType = 'einsso'; // Default safe
+        // 2. Determinar el Tipo con normalización robusta y asignación de Institución explícita
+        $cipId = Institution::where('slug', 'cip')->value('id');
+        $einssoId = Institution::where('slug', 'einsso')->value('id');
+
+        $detectedType = 'einsso';
+        $institutionId = $einssoId;
+
         if ($option) {
-            $rawType = strtolower($option->certificate_type ?? '');
-            // Mapeo explícito
+            $rawType = strtolower($option->type ?? '');
             if ($rawType === 'megapack') {
                 $detectedType = 'megapack';
+                $institutionId = $cipId; // El principal del megapack es CIP
             } elseif ($rawType === 'cip') {
                 $detectedType = 'cip';
+                $institutionId = $cipId;
             } else {
-                // 'modular', 'curso', 'specialization', etc. -> Formulario estándar (Einsso)
                 $detectedType = 'einsso';
+                $institutionId = $einssoId;
             }
         } else {
-            // Lógica Legacy antigua si no existe la opción en DB
+            // Lógica Legacy antigua por título
             $itemTitle = $items['title'] ?? '';
-            $courseTitle = $this->record->course?->title ?? $items['course_title'] ?? null;
-            
             if (stripos($itemTitle, 'Mega Pack') !== false) {
                 $detectedType = 'megapack';
+                $institutionId = $cipId;
             } elseif (stripos($itemTitle, 'Colegio de Ingenieros') !== false || stripos($itemTitle, 'CIP') !== false) {
                 $detectedType = 'cip';
+                $institutionId = $cipId;
             }
         }
 
-        $courseTitle = $this->record->course?->title;
-        $hours = $this->record->course?->academic_hours ?? 0;
+        $courseTitle = $this->payment->course?->title;
+        $hours = $this->payment->course?->academic_hours ?? 0;
         $grade = $this->calculateGrade();
         
-        // Preparar items por defecto para Megapack
+        // Items por defecto Megapack
         $defaultItems = [];
         if ($detectedType === 'megapack') {
-            // Item 1: Principal (CIP)
+            // 1. Principal (CIP)
             $defaultItems[] = [
                 'is_main' => true,
-                'institution_id' => Institution::cip()?->id,
+                'institution_id' => $cipId,
                 'custom_label' => 'Certificado CIP',
                 'title' => $courseTitle,
                 'hours' => $hours,
                 'grade' => $grade,
                 'issue_date' => null,
-                'code' => null,
-                'file_path' => null
             ];
-            // Items 2-5: Secundarios (Modulares)
+            // 2-5. Secundarios (Einsso)
             for ($i = 0; $i < 4; $i++) {
                 $defaultItems[] = [
                     'is_main' => false,
-                    'institution_id' => Institution::einsso()?->id,
+                    'institution_id' => $einssoId,
                     'custom_label' => 'Certificado Modular ' . ($i + 1),
-                    'title' => null,
-                    'hours' => null,
                     'grade' => 20,
-                    'issue_date' => null,
-                    'code' => null,
-                    'file_path' => null
                 ];
             }
         }
 
         $this->form->fill([
-            'certificate_option_id' => $option?->id, // ID de la opción encontrada
-            'type' => $detectedType, // Tipo interno calculado
+            'certificate_option_id' => $option?->id,
+            'type' => $detectedType,
             'title' => ($detectedType === 'megapack') ? null : $courseTitle,
-            'user_id' => $this->record->user_id,
-            'institution_id' => ($detectedType === 'cip') ? Institution::cip()?->id : Institution::einsso()?->id,
+            'user_id' => $this->payment->user_id,
+            'institution_id' => $institutionId,
             'hours' => $hours, 
             'grade' => $grade,
             'issue_date' => null,
@@ -162,47 +127,39 @@ class ProcessCertificate extends Page
         ]);
     }
     
-    // ... (calculateGrade method remains unchanged) ...
-
     private function calculateGrade(): int
     {
-        if (!$this->record->course_id) return 0;
+        if (!$this->payment->course_id) return 0;
 
-        // Get all evaluations for this course
-        $evaluations = \App\Models\Evaluation::where('course_id', $this->record->course_id)->get();
+        $evaluations = \App\Models\Evaluation::where('course_id', $this->payment->course_id)->get();
         $totalEvaluations = $evaluations->count();
-        
         if ($totalEvaluations === 0) return 0;
 
         $totalScore = 0;
-
         foreach ($evaluations as $eval) {
-            // Get max score for this user on this evaluation, limiting to first 3 attempts
-            $attempts = \App\Models\EvaluationAttempt::where('user_id', $this->record->user_id)
+            $attempts = \App\Models\EvaluationAttempt::where('user_id', $this->payment->user_id)
                 ->where('evaluation_id', $eval->id)
                 ->orderBy('id', 'asc')
                 ->limit(3)
                 ->get();
-            
             if ($attempts->isNotEmpty()) {
                 $totalScore += $attempts->max('score');
             }
         }
-
         return (int) round($totalScore / $totalEvaluations);
     }
 
     public function form(Form $form): Form
     {
-        $items = is_string($this->record->items) ? json_decode($this->record->items, true) : $this->record->items;
+        $items = is_string($this->payment->items) ? json_decode($this->payment->items, true) : $this->payment->items;
         $paidTitle = $items['title'] ?? 'N/A';
         $paidCourse = $items['course_title'] ?? 'N/A';
 
         return $form
             ->schema([
-                Forms\Components\Section::make('Generar Certificado para: ' . $this->record->user->name)
+                Forms\Components\Section::make('Generar Certificado para: ' . $this->payment->user->name)
                     ->description(new \Illuminate\Support\HtmlString(
-                        'DNI/CE: ' . ($this->record->user->profile->dni_ce ?? 'S/D') . '<br>' .
+                        'DNI/CE: ' . ($this->payment->user->profile->dni_ce ?? 'S/D') . '<br>' .
                         'Item Pagado: <strong>' . $paidTitle . '</strong><br>' .
                         'Curso: <strong>' . $paidCourse . '</strong>'
                     ))
@@ -210,15 +167,15 @@ class ProcessCertificate extends Page
                         Forms\Components\Select::make('certificate_option_id')
                             ->label('Opción de Certificación')
                             ->options(function () {
-                                if (!$this->record->course_id) return [];
-                                return \App\Models\CourseCertificateOption::where('course_id', $this->record->course_id)
+                                if (!$this->payment->course_id) return [];
+                                return \App\Models\CourseCertificateOption::where('course_id', $this->payment->course_id)
                                     ->pluck('title', 'id');
                             })
                             ->disabled()
-                            ->dehydrated(false) // No necesitamos guardar esto en el modelo Certificate directamente
+                            ->dehydrated(false)
                             ->required(),
 
-                        Forms\Components\Hidden::make('type') // Mantiene el tipo para la lógica condicional
+                        Forms\Components\Hidden::make('type')
                             ->live()
                             ->dehydrated(),
                         
@@ -232,14 +189,15 @@ class ProcessCertificate extends Page
                                         Forms\Components\Select::make('institution_id')
                                             ->label('Institución')
                                             ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
+                                            ->searchable()
+                                            ->preload()
                                             ->required()
-                                            ->disabled() // Siempre fijado por el tipo
+                                            ->disabled() 
                                             ->dehydrated(),
                                         Forms\Components\TextInput::make('title')
                                             ->label('Título del curso / módulo')
                                             ->required()
                                             ->maxLength(255)
-                                            ->disabled(false)
                                             ->dehydrated(),
                                     ]),
                                 Forms\Components\Grid::make(3)
@@ -248,14 +206,12 @@ class ProcessCertificate extends Page
                                             ->numeric()
                                             ->label('Horas')
                                             ->required()
-                                            ->disabled(false)
                                             ->dehydrated(),
                                         Forms\Components\TextInput::make('grade')
                                             ->label('Nota')
                                             ->numeric()
                                             ->minValue(0)
                                             ->maxValue(20)
-                                            ->rules(['integer','between:0,20'])
                                             ->default(0)
                                             ->dehydrated(),
                                     ]),
@@ -299,8 +255,10 @@ class ProcessCertificate extends Page
                                                 Forms\Components\Select::make('institution_id')
                                                     ->label('Institución')
                                                     ->options(fn () => Institution::query()->orderBy('name')->pluck('name', 'id')->all())
+                                                    ->searchable()
+                                                    ->preload()
                                                     ->required()
-                                                    ->disabled() // Auto-asignado
+                                                    ->disabled() 
                                                     ->dehydrated(),
                                                 Forms\Components\TextInput::make('title')
                                                     ->label('Título del curso / módulo')
@@ -318,7 +276,6 @@ class ProcessCertificate extends Page
                                                     ->numeric()
                                                     ->minValue(0)
                                                     ->maxValue(20)
-                                                    ->rules(['integer','between:0,20'])
                                                     ->default(0),
                                             ]),
                                         Forms\Components\Grid::make(3)
@@ -354,7 +311,7 @@ class ProcessCertificate extends Page
     public function create(): void
     {
         $data = $this->form->getState();
-        $user = $this->record->user;
+        $user = $this->payment->user;
         $profile = $user->profile;
 
         if (!$profile) {
@@ -362,7 +319,10 @@ class ProcessCertificate extends Page
             return;
         }
 
-        // Preparar datos comunes
+        // Logic to create certificate (Identical to ProcessCertificate, but using $this->payment)
+        // ... (Omitting full copy here for brevity, but I will include it in the real file write) ...
+        // Actually, I need to include the full create method.
+        
         $commonData = [
             'user_id' => $user->id,
             'nombres' => $profile->nombres,
@@ -371,7 +331,6 @@ class ProcessCertificate extends Page
             'type' => $data['type'],
         ];
 
-        // Helper para inferir categoría
         $inferCategory = function ($institutionId) {
             if (!$institutionId) return 'curso';
             $inst = \App\Models\Institution::find($institutionId);
@@ -380,7 +339,6 @@ class ProcessCertificate extends Page
         };
 
         if (in_array($data['type'], ['cip', 'einsso'])) {
-            // Crear Certificado Único
             $certData = array_merge($commonData, [
                 'institution_id' => $data['institution_id'],
                 'title' => $data['title'],
@@ -390,23 +348,19 @@ class ProcessCertificate extends Page
                 'issue_date' => \Carbon\Carbon::createFromFormat('d/m/Y', $data['issue_date'])->format('Y-m-d'),
                 'code' => strtoupper($data['code']),
                 'file_path' => $data['file_path'] ?? null,
-                'payment_id' => $this->record->id,
+                'payment_id' => $this->payment->id,
             ]);
-
             $cert = Certificate::create($certData);
-        
         } else {
-            // Crear Megapack (Certificado Padre + Items)
             $cert = Certificate::create(array_merge($commonData, [
-                // Para el Megapack padre, la institución es CIP (según usuario: Megapack consta de un certificado de colegio de ingenieros...)
                 'institution_id' => Institution::cip()?->id, 
                 'title' => 'Megapack ' . count($data['items']) . ' Certificados',
-                'category' => 'curso', // Generalmente el padre es curso/diplomado
+                'category' => 'curso', 
                 'hours' => 0,
                 'grade' => 0,
                 'issue_date' => now(),
                 'code' => 'PACK-' . uniqid(), 
-                'payment_id' => $this->record->id,
+                'payment_id' => $this->payment->id,
             ]));
 
             foreach ($data['items'] as $item) {
@@ -423,44 +377,32 @@ class ProcessCertificate extends Page
             }
         }
 
-        // Enviar correo con el certificado adjunto
-        $recipientEmail = $this->record->payer_email ?: $user->email;
+        $recipientEmail = $this->payment->payer_email ?: $user->email;
         if ($recipientEmail && $cert) {
             try {
                 if ($data['type'] === 'megapack') {
                     $cert->load('items');
                 }
-                
                 \Illuminate\Support\Facades\Mail::to($recipientEmail)
                     ->send(new \App\Mail\CertificateSent($cert));
-                    
-                Notification::make()
-                    ->title('Correo enviado con certificado')
-                    ->success()
-                    ->send();
+                Notification::make()->title('Correo enviado')->success()->send();
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Error enviando certificado por correo: ' . $e->getMessage());
-                Notification::make()
-                    ->title('Certificado generado pero falló el envío del correo')
-                    ->warning()
-                    ->body($e->getMessage())
-                    ->send();
+                Notification::make()->title('Error envío correo')->warning()->body($e->getMessage())->send();
             }
         }
 
         if ($cert) {
-             $this->record->update(['status' => 'finalized']);
+             $this->payment->update(['status' => 'finalized']);
         }
 
-        Notification::make()
-            ->title('Certificado generado exitosamente')
-            ->success()
-            ->send();
+        Notification::make()->title('Certificado generado exitosamente')->success()->send();
 
-        if ($this->record->course_id) {
-             $this->redirect(\App\Filament\Admin\Resources\CourseResource::getUrl('payments', ['record' => $this->record->course_id]));
-        } else {
-             $this->redirect(PaymentCompletedResource::getUrl('index'));
-        }
+        // Redirect to course payments using the NEW URL logic
+        $this->redirect($this->getCancelUrl());
+    }
+
+    public function getCancelUrl(): string
+    {
+        return CourseResource::getUrl('payments', ['record' => $this->course->id]);
     }
 }

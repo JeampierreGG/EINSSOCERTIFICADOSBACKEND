@@ -43,8 +43,21 @@ class ManageCourseCertifications extends Page implements HasTable
                 Tables\Columns\TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state === 'megapack' ? 'Mega Pack' : 'Solo Certificado')
-                    ->color(fn ($state) => $state === 'megapack' ? 'warning' : 'info'),
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'cip'      => 'Colegio de Ingenieros',
+                        'einsso'   => 'Einsso Consultores',
+                        'megapack' => 'Mega Pack',
+                        // Backward compatibility
+                        'solo_certificado' => 'Solo Certificado',
+                        default    => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'cip'              => 'danger',
+                        'einsso'           => 'primary',
+                        'megapack'         => 'success',
+                        'solo_certificado' => 'info',
+                        default            => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Título')
                     ->searchable(),
@@ -61,10 +74,6 @@ class ManageCourseCertifications extends Page implements HasTable
                     ->visibility('private'),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('manage_blocks')
-                    ->label('Gestionar Bloques')
-                    ->icon('heroicon-o-rectangle-stack')
-                    ->url(fn () => CourseResource::getUrl('blocks', ['record' => $this->record])),
                 Tables\Actions\CreateAction::make()
                     ->label('Nueva Certificación')
                     ->modalHeading('Crear Opción de Certificación')
@@ -73,9 +82,24 @@ class ManageCourseCertifications extends Page implements HasTable
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['course_id'] = $this->record->id;
                         return $data;
-                    }),
+                    })
+                    ->extraAttributes(['style' => 'margin-right: auto;']),
+
+                Tables\Actions\Action::make('manage_blocks')
+                    ->label('Gestionar Bloques')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->color('warning')
+                    ->url(fn () => CourseResource::getUrl('blocks', ['record' => $this->record]))
+                    ->extraAttributes(['style' => 'margin-right: auto;']),
+
+                Tables\Actions\Action::make('course_payments')
+                    ->label('Pagos')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->url(fn () => CourseResource::getUrl('payments', ['record' => $this->record])),
             ])
             ->actions([
+
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar Opción de Certificación')
                     ->closeModalByClickingAway(false)
@@ -91,17 +115,25 @@ class ManageCourseCertifications extends Page implements HasTable
         return [
             Forms\Components\Radio::make('type')
                 ->label('Tipo de Certificación')
-                ->options([
-                    'solo_certificado' => 'Solo Certificado',
-                    'megapack' => 'Mega Pack',
-                ])
-                ->default('solo_certificado')
+                ->options(function () {
+                    return \App\Models\Institution::orderByRaw("array_position(ARRAY['einsso','cip','megapack'], slug)")
+                        ->get()
+                        ->mapWithKeys(fn ($inst) => [
+                            $inst->slug => $inst->name,
+                        ])
+                        ->toArray();
+                })
+                ->default('einsso')
                 ->reactive()
                 ->afterStateUpdated(function ($state, Forms\Set $set) {
-                    if ($state === 'solo_certificado') {
+                    if ($state === 'cip') {
+                        $set('title', '');
+                        $set('details', "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General del COLEGIO DE INGENIEROS DEL PERÚ.\nTemario detallado y Promedio de calificación obtenida.");
+                    } elseif ($state === 'einsso') {
                         $set('title', '');
                         $set('details', "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General de EINSSO CONSULTORES.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.");
                     } else {
+                        // megapack
                         $set('title', 'Mega Pack');
                         $set('details', "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General del COLEGIO DE INGENIEROS DEL PERÚ.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.");
                         $set('megapack_items', [
@@ -145,27 +177,12 @@ class ManageCourseCertifications extends Page implements HasTable
                         ->numeric()
                         ->integer()
                         ->minValue(1)
-                        ->required(fn ($get) => $get('type') === 'solo_certificado')
-                        ->visible(fn ($get) => $get('type') === 'solo_certificado'),
+                        ->required(fn ($get) => in_array($get('type'), ['cip', 'einsso', 'solo_certificado']))
+                        ->visible(fn ($get) => in_array($get('type'), ['cip', 'einsso', 'solo_certificado'])),
                 ])
-                ->visible(fn ($get) => $get('type') === 'solo_certificado'),
+                ->visible(fn ($get) => in_array($get('type'), ['cip', 'einsso', 'solo_certificado'])),
 
-            Forms\Components\Select::make('certification_block_id')
-                ->label('Bloque de Disponibilidad')
-                ->options(function () {
-                    return \App\Models\CertificationBlock::where('course_id', $this->record->id)
-                        ->where('is_active', true)
-                        ->orderBy('start_date', 'desc')
-                        ->get()
-                        ->mapWithKeys(function ($block) {
-                            $dateRange = $block->start_date->format('d/m/Y') . ' - ' . $block->end_date->format('d/m/Y');
-                            return [$block->id => $block->name . ' (' . $dateRange . ')'];
-                        });
-                })
-                ->searchable()
-                ->preload()
-                ->nullable()
-                ->helperText('Seleccione el bloque/campaña durante el cual esta opción estará disponible para compra'),
+
 
             Forms\Components\Grid::make(2)
                 ->schema([
@@ -232,10 +249,11 @@ class ManageCourseCertifications extends Page implements HasTable
                 ->label('Detalles del Certificado')
                 ->rows(5)
                 ->default(function ($get) {
-                    if ($get('type') === 'megapack') {
-                        return "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General del COLEGIO DE INGENIEROS DEL PERÚ.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.";
-                    }
-                    return "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General de EINSSO CONSULTORES.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.";
+                    return match ($get('type')) {
+                        'cip' => "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General del COLEGIO DE INGENIEROS DEL PERÚ.\nTemario detallado y Promedio de calificación obtenida.",
+                        'megapack' => "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General del COLEGIO DE INGENIEROS DEL PERÚ.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.",
+                        default => "Certificado digital (Incluye código QR y código único de validación).\nFirma y Sello del Gerente General de EINSSO CONSULTORES.\nFirma y Sello del Coordinador Académico de EINSSO CONSULTORES.\nTemario detallado y Promedio de calificación obtenida.",
+                    };
                 })
                 ->required(),
         ];

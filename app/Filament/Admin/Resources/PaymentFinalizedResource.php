@@ -25,6 +25,11 @@ class PaymentFinalizedResource extends Resource
     protected static ?string $slug = 'payment-finalized';
     protected static ?string $navigationIcon = 'heroicon-o-check-badge';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->has('certificate');
