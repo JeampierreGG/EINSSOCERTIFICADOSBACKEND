@@ -39,7 +39,7 @@ class ClaimResponseMail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.claims.response',
+            view: 'emails.claims.response',
             with: [
                 'claim' => $this->claim,
             ],

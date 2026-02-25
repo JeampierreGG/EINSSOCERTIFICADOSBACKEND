@@ -13,8 +13,15 @@
         .content h2 { color: #282975; font-size: 24px; margin-bottom: 20px; text-align: center; }
         .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
         .details-table th, .details-table td { padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: left; }
-        .details-table th { background-color: #f9f9f9; color: #555555; }
-        .footer { text-align: center; font-size: 12px; color: #888888; padding: 20px; border-top: 1px solid #eeeeee; margin-top: 20px; }
+        /* ── FOOTER ── */
+        .footer {
+            background-color: #f8f9ff;
+            border-top: 1px solid #eaeef8;
+            padding: 20px 32px;
+            text-align: center;
+        }
+        .footer p { font-size: 12px; color: #999; margin-bottom: 4px; }
+        .footer strong { color: #282975; }
         .btn { display: inline-block; background-color: #00B2A1; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
         .alert { background-color: #f8f9fa; border-left: 4px solid #00B2A1; padding: 15px; margin: 20px 0; font-size: 14px; color: #555; }
     </style>
@@ -92,9 +99,10 @@
                 <a href="https://einssoconsultores.com/mis-pagos" class="btn">Ver Estado del Pago</a>
             </div>
         </div>
+        {{-- ===== FOOTER ===== --}}
         <div class="footer">
-            <p>Este es un mensaje automático, por favor no responder a este correo.</p>
-            <p>&copy; {{ date('Y') }} EINSSO Consultores. Todos los derechos reservados.</p>
+            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+            <p>&copy; {{ date('Y') }} <strong>EINSSO Consultores</strong>. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

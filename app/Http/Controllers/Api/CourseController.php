@@ -118,6 +118,17 @@ class CourseController extends Controller
             'status' => 'active'
         ]);
 
+        // Cargar relaciones para el correo
+        $enrollment->load(['user', 'course']);
+
+        // Enviar correo de confirmación de matrícula (en cola para no bloquear la respuesta)
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)
+                ->queue(new \App\Mail\EnrollmentConfirmation($enrollment));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error enviando correo de matrícula: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Inscripción exitosa',
             'already_enrolled' => false,

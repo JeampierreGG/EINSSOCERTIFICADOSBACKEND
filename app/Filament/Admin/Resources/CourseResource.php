@@ -251,6 +251,11 @@ class CourseResource extends Resource
                     ->label('Certificación')
                     ->icon('heroicon-o-academic-cap')
                     ->url(fn ($record) => static::getUrl('certificates', ['record' => $record->id])),
+                Tables\Actions\Action::make('reminders')
+                    ->label('Recordatorios')
+                    ->icon('heroicon-o-bell')
+                    ->color('warning')
+                    ->url(fn ($record) => static::getUrl('reminders', ['record' => $record->id])),
                 Tables\Actions\Action::make('enrollments')
                     ->label('Estudiantes')
                     ->icon('heroicon-o-users')
@@ -279,6 +284,7 @@ class CourseResource extends Resource
             'edit' => Pages\EditCourse::route('/{record}/edit'),
             'modules' => Pages\ManageCourseModules::route('/{record}/modules'),
             'certificates' => Pages\ManageCourseCertifications::route('/{record}/certificates'),
+            'reminders' => Pages\ManageCourseReminders::route('/{record}/reminders'),
             'enrollments' => Pages\ManageCourseEnrollments::route('/{record}/enrollments'),
             'create-evaluation' => Pages\CreateEvaluation::route('/{record}/evaluations/create'),
             'edit-evaluation' => Pages\EditEvaluation::route('/{record}/evaluations/{evaluation}/edit'),

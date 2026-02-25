@@ -24,9 +24,15 @@
         .btn { display: inline-block; background-color: #00B2A1; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; transition: background-color 0.3s; box-shadow: 0 4px 6px rgba(0, 178, 161, 0.2); }
         .btn:hover { background-color: #009081; }
         
-        .footer { background-color: #f8f9fa; padding: 25px; text-align: center; font-size: 13px; color: #888; border-top: 1px solid #eaeaea; }
-        .social-links { margin-top: 15px; }
-        .footer a { color: #282975; text-decoration: none; margin: 0 8px; }
+        /* ── FOOTER ── */
+        .footer {
+            background-color: #f8f9ff;
+            border-top: 1px solid #eaeef8;
+            padding: 20px 32px;
+            text-align: center;
+        }
+        .footer p { font-size: 12px; color: #999; margin-bottom: 4px; }
+        .footer strong { color: #282975; }
     </style>
 </head>
 <body>
@@ -101,13 +107,10 @@
                     ¡Felicitaciones por este logro profesional!
                 </p>
             </div>
+            {{-- ===== FOOTER ===== --}}
             <div class="footer">
-                <p>EINSSO Consultores - Excelencia en Capacitación</p>
-                <p>Si tienes alguna consulta, no dudes en contactarnos.</p>
-                <div class="social-links">
-                    <a href="#">Sitio Web</a> • <a href="#">Facebook</a> • <a href="#">LinkedIn</a>
-                </div>
-                <p style="margin-top: 15px; font-size: 11px;">Este correo contiene documentos importantes. Por favor guárdalo para futuras referencias.</p>
+                <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+                <p>&copy; {{ date('Y') }} <strong>EINSSO Consultores</strong>. Todos los derechos reservados.</p>
             </div>
         </div>
     </div>

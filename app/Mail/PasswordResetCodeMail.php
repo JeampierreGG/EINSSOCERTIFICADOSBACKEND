@@ -39,7 +39,7 @@ class PasswordResetCodeMail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.auth.password-reset-code',
+            view: 'emails.auth.password-reset-code',
             with: [
                 'code' => $this->code,
             ],
