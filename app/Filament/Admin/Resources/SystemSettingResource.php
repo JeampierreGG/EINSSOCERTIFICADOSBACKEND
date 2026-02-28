@@ -31,30 +31,7 @@ class SystemSettingResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Logos')
-                    ->schema([
-                        Forms\Components\FileUpload::make('header_logo')
-                            ->label('Logo del Encabezado')
-                            ->image()
-                            ->disk('s3')
-                            ->directory('system')
-                            ->visibility('public')
-                            ->columnSpan(1),
-                        Forms\Components\FileUpload::make('footer_logo')
-                            ->label('Logo del Footer')
-                            ->image()
-                            ->disk('s3')
-                            ->directory('system')
-                            ->visibility('public')
-                            ->columnSpan(1),
-                        Forms\Components\FileUpload::make('loading_logo')
-                            ->label('Logo de Carga (Spinner)')
-                            ->image()
-                            ->disk('s3')
-                            ->directory('system')
-                            ->visibility('public')
-                            ->columnSpan(1),
-                    ])->columns(3),
+
 
                 Forms\Components\Section::make('Redes Sociales')
                     ->schema([

@@ -15,9 +15,6 @@ class SystemSettingController extends Controller
 
         if (!$settings) {
             return response()->json([
-                'header_logo' => null,
-                'footer_logo' => null,
-                'loading_logo' => null,
                 'facebook_url' => null,
                 'instagram_url' => null,
                 'tiktok_url' => null,
@@ -30,9 +27,6 @@ class SystemSettingController extends Controller
         }
 
         return response()->json([
-            'header_logo' => $this->generateUrl($settings->header_logo),
-            'footer_logo' => $this->generateUrl($settings->footer_logo),
-            'loading_logo' => $this->generateUrl($settings->loading_logo),
             'facebook_url' => $settings->facebook_url,
             'instagram_url' => $settings->instagram_url,
             'tiktok_url' => $settings->tiktok_url,
