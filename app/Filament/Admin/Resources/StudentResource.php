@@ -113,6 +113,7 @@ class StudentResource extends Resource
                             ->label('Contraseña')
                             ->password()
                             ->dehydrated(fn ($state) => filled($state))
+                            ->dehydrateStateUsing(fn ($state) => \Illuminate\Support\Facades\Hash::make($state))
                             ->required(fn (string $context): bool => $context === 'create'),
                     ])->columns(2),
             ]);
