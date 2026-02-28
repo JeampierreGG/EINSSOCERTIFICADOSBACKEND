@@ -23,7 +23,7 @@
 <div class="wrapper">
     <div class="container">
         <div class="header">
-            <img src="{{ asset('logos/einsso-a.png') }}" alt="EINSSO" />
+            <img src="{{ $message->embed(public_path('logos/einsso-a.png')) }}" alt="EINSSO" />
         </div>
         <div class="content">
             <h2 style="color: #282975; margin-bottom: 20px;">Recuperación de Contraseña</h2>
