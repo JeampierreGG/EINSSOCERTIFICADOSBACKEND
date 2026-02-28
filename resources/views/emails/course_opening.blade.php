@@ -201,27 +201,7 @@
 
         {{-- ===== HEADER ===== --}}
         <div class="header">
-            @php
-                $settings = \App\Models\SystemSetting::first();
-                $logoSrc  = 'https://einssoconsultores.com/logos/einsso-a.png';
-
-                if ($settings && $settings->header_logo) {
-                    try {
-                        $logoPath = $settings->header_logo;
-                        if (is_string($logoPath) && str_starts_with($logoPath, '[')) {
-                            $logoPath = json_decode($logoPath, true)[0] ?? $logoPath;
-                        }
-                        if (is_array($logoPath)) { $logoPath = array_values($logoPath)[0] ?? null; }
-                        if ($logoPath) {
-                            $logoPath = ltrim(trim($logoPath), '/');
-                            $logoData = \Illuminate\Support\Facades\Storage::disk('s3')->get($logoPath);
-                            $mime     = \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($logoPath);
-                            $logoSrc  = $message->embedData($logoData, 'logo.png', $mime);
-                        }
-                    } catch (\Throwable $e) {}
-                }
-            @endphp
-            <img src="{{ $logoSrc }}" alt="EINSSO Consultores" />
+            <img src="{{ $message->embed(public_path('logos/einsso-a.png')) }}" alt="EINSSO Consultores" />
             <div class="header-title">Apertura y 1ª Sesión en Vivo</div>
         </div>
 

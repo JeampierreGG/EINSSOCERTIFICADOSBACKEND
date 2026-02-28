@@ -39,29 +39,7 @@
     <div class="wrapper">
         <div class="container">
             <div class="header">
-                @php
-                    $settings = \App\Models\SystemSetting::first();
-                    $logoSrc = 'https://einssoconsultores.com/logos/einsso-a.png'; 
-                    
-                    if ($settings && $settings->header_logo) {
-                        try {
-                             $disk = config('filesystems.default');
-                             if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($settings->header_logo)) {
-                                 if ($disk === 's3') {
-                                     $logoData = \Illuminate\Support\Facades\Storage::disk($disk)->get($settings->header_logo);
-                                     $mime = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($settings->header_logo);
-                                     $logoSrc = $message->embedData($logoData, 'logo.png', $mime);
-                                 } else {
-                                    $localPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($settings->header_logo);
-                                    $logoSrc = $message->embed($localPath);
-                                 }
-                             }
-                        } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error('Error embedding logo: ' . $e->getMessage());
-                        }
-                    }
-                @endphp
-                <img src="{{ $logoSrc }}" alt="EINSSO Consultores" style="max-height: 80px; width: auto;" />
+                <img src="{{ $message->embed(public_path('logos/einsso-a.png')) }}" alt="EINSSO Consultores" style="max-height: 80px; width: auto;" />
             </div>
             <div class="content">
                 <div class="greeting">Estimad@ {{ $certificate->user->name ?? $certificate->nombres }},</div>

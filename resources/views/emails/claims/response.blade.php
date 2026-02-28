@@ -23,18 +23,7 @@
 <div class="wrapper">
     <div class="container">
         <div class="header">
-            @php
-                $settings = \App\Models\SystemSetting::first();
-                $logoSrc  = 'https://einssoconsultores.com/logos/einsso-a.png';
-                if ($settings && $settings->header_logo) {
-                    try {
-                        $logoPath = ltrim(json_decode($settings->header_logo, true)[0] ?? $settings->header_logo, '/');
-                        $logoData = \Illuminate\Support\Facades\Storage::disk('s3')->get($logoPath);
-                        $logoSrc  = $message->embedData($logoData, 'logo.png', \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($logoPath));
-                    } catch (\Throwable $e) {}
-                }
-            @endphp
-            <img src="{{ $logoSrc }}" alt="EINSSO" />
+            <img src="{{ $message->embed(public_path('logos/einsso-a.png')) }}" alt="EINSSO" />
         </div>
         <div class="content">
             <h2 style="color: #282975; margin-bottom: 20px; text-align: center;">Respuesta a su Reclamo</h2>

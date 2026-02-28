@@ -29,33 +29,7 @@
 <body>
     <div class="container">
         <div class="header">
-            @php
-                $settings = \App\Models\SystemSetting::first();
-                $logoSrc = 'https://einssoconsultores.com/logos/einsso-a.png'; // Fallback seguro online
-                
-                if ($settings && $settings->header_logo) {
-                    try {
-                        // Intentar obtener el path absoluto del disco (usualmente 'public' o el default)
-                        // Filament suele guardar en el disco definido en su config, asumimos 'public' o 's3' según env.
-                        // Si estamos en local/prod con filesystem 'public':
-                         $disk = config('filesystems.default'); // o 'public'
-                         if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($settings->header_logo)) {
-                             // Obtener ruta física para embed
-                             if ($disk === 's3') {
-                                 $logoData = \Illuminate\Support\Facades\Storage::disk($disk)->get($settings->header_logo);
-                                 $mime = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($settings->header_logo);
-                                 $logoSrc = $message->embedData($logoData, 'logo.png', $mime);
-                             } else {
-                                $localPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($settings->header_logo);
-                                $logoSrc = $message->embed($localPath);
-                             }
-                         }
-                    } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error('Error embedding logo: ' . $e->getMessage());
-                    }
-                }
-            @endphp
-            <img src="{{ $logoSrc }}" alt="EINSSO Consultores" style="max-height: 80px; width: auto;" />
+            <img src="{{ $message->embed(public_path('logos/einsso-a.png')) }}" alt="EINSSO Consultores" style="max-height: 80px; width: auto;" />
         </div>
         <div class="content">
             <h2>¡Hemos recibido tu pago!</h2>
