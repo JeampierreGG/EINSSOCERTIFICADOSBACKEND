@@ -42,13 +42,17 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
                 'gray' => Color::Slate,
             ])
+            ->font('Inter')
+            ->spa()
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('Gestión Académica'),
                 NavigationGroup::make()
                     ->label('Pagos'),
                 NavigationGroup::make()
-                    ->label('Seguridad'),
+                    ->label('Soporte'),
+                NavigationGroup::make()
+                    ->label('Ajustes'),
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -76,50 +80,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])
-            ->renderHook(
-                'panels::body.end',
-                fn (): string => <<<'HTML'
-                    <style>
-                        /* ============================================================
-                           DARK MODE FIX: Pagination "Records per page" select
-                           El <select> de Filament hereda bg-transparent, lo que hace
-                           que el navegador aplique su propio fondo blanco nativo.
-                           Forzamos el fondo correcto y color-scheme para que las
-                           opciones nativas del dropdown también sean oscuras.
-                           ============================================================ */
-
-                        /* Wrapper del select de paginación */
-                        html.dark .fi-pagination .fi-input-wrapper,
-                        html.dark nav[aria-label] .fi-input-wrapper {
-                            background-color: rgb(30 41 59) !important;
-                        }
-
-                        /* El <select> en sí */
-                        html.dark .fi-pagination .fi-select-input,
-                        html.dark .fi-pagination select,
-                        html.dark nav[aria-label] .fi-select-input,
-                        html.dark nav[aria-label] select {
-                            background-color: rgb(30 41 59) !important;
-                            color: rgb(248 250 252) !important;
-                            color-scheme: dark !important;
-                        }
-
-                        /* Las options nativas */
-                        html.dark .fi-pagination select option,
-                        html.dark nav[aria-label] select option {
-                            background-color: rgb(30 41 59) !important;
-                            color: rgb(248 250 252) !important;
-                        }
-                    </style>
-                HTML,
-            );
-    }
-
-    public function boot(): void
-    {
-        FilamentAsset::register([
-            Css::make('filament-custom', public_path('css/filament-custom.css')),
-        ]);
+            ]);
     }
 }

@@ -21,6 +21,7 @@ class ClaimResource extends Resource
     protected static ?string $modelLabel = 'Reclamo';
     protected static ?string $pluralModelLabel = 'Reclamos';
 
+    protected static ?string $navigationGroup = 'Soporte';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
