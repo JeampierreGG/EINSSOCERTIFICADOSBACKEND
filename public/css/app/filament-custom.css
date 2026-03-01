@@ -123,19 +123,25 @@ html.dark .fi-simple-main {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* ── LOGO MÁS GRANDE (Aplica en ambos modos) ────────────────────── */
+/* ── LOGOS ADAPTATIVOS: DASHBOARD VS LOGIN ────────────────────── */
 .einsso-logo-container {
     display: flex;
-    justify-content: center;
     align-items: center;
 }
 
-/* Configuración base de logos */
+/* 1. TAMAÑO POR DEFECTO (SideNav / TopBar del Dashboard) */
 .einsso-logo-light,
 .einsso-logo-dark {
-    height: 7rem !important;
+    height: 2.5rem !important;
+    /* Evita desbordar la barra de Filament */
     width: auto !important;
     transition: transform 0.2s ease;
+}
+
+/* 2. TAMAÑO GIGANTE (Solo en páginas Auth/Login) */
+.fi-simple-layout .einsso-logo-light,
+.fi-simple-layout .einsso-logo-dark {
+    height: 7rem !important;
 }
 
 .einsso-logo-light:hover,

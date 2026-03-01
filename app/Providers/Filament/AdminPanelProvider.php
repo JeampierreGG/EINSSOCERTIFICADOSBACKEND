@@ -36,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login(Login::class)
             ->brandLogo(fn () => view('filament.brand-logo'))
-            ->brandLogoHeight('7rem')
+            ->brandLogoHeight('2.5rem')
             ->darkMode(true)
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth('full')
@@ -88,8 +88,9 @@ class AdminPanelProvider extends PanelProvider
 
     public function boot(): void
     {
-        FilamentAsset::register([
-            Css::make('filament-custom', asset('css/app/filament-custom.css')),
-        ]);
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn (): string => '<link rel="stylesheet" href="' . asset('css/app/filament-custom.css') . '" />',
+        );
     }
 }
