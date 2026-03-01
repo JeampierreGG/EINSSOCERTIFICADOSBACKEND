@@ -32,6 +32,13 @@ services:
     entrypoint: ["sh", "/var/www/html/docker/entrypoint.sh"]
     networks:
       - appnet
+    # Healthcheck: verifica que php-fpm esté activo y listo (tras entrypoint.sh)
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s   # Tiempo generoso para que entrypoint.sh complete migraciones
 
   worker:
     build:
@@ -43,6 +50,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      app:
+        condition: service_healthy   # ← Espera a que app termine migraciones
     volumes:
       - .:/var/www/html
     entrypoint: ["sh", "/var/www/html/docker/entrypoint.sh", "php", "artisan", "queue:work", "--tries=3", "--timeout=90"]

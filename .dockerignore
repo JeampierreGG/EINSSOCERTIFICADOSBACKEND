@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+.gitattributes
+.github
+
+# Herramientas de desarrollo local
+.fleet
+.idea
+.vscode
+.editorconfig
+.styleci.yml
+
+# Node (solo usado para assets del admin Filament, no en runtime)
+node_modules
+
+# Vendor (se instala dentro del contenedor)
+vendor
+
+# Datos de BD local (nunca deben ir al contenedor)
+docker/postgres-data
+
+# Certs (se montan como volumen en docker-compose)
+certs
+
+# Archivos de entorno (se usan como env_file en docker-compose)
+.env
+.env.*
+!.env.example
+
+# Build artifacts y caches temporales
+public/hot
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+
+# Tests y docs
+tests
+README.md
+CHANGELOG.md
+phpunit.xml
+.phpunit.result.cache
+composer_output.txt
+diff.txt
+diff_admin.txt

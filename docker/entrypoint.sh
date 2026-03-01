@@ -48,14 +48,23 @@ if [ "$1" != "php" ] || [ "$2" != "artisan" ] || [ "$3" != "queue:work" ]; then
     # Limpiar caches previas para evitar inconsistencias
     php artisan optimize:clear || true
     
-    # Cachear nueva configuración
+    # Cachear nueva configuración (tolerante a errores — no es crítico para el arranque)
     php artisan config:cache || true
     php artisan route:cache || true
     php artisan view:cache || true
     php artisan event:cache || true
     
+    # Ejecutar migraciones — SI FALLA, el contenedor debe detenerse
+    # (no silenciar con || true, necesitamos saber si hay un problema)
     echo "Ejecutando migraciones (migrate --force)..."
-    php artisan migrate --force || true
+    if ! php artisan migrate --force; then
+        echo "=========================================="
+        echo "❌ ERROR CRÍTICO: Las migraciones fallaron"
+        echo "   Revisa los logs con: docker compose logs app"
+        echo "=========================================="
+        exit 1
+    fi
+    echo "✅ Migraciones completadas exitosamente."
 else
     echo "Instancia de WORKER detectada. Saltando mantenimiento de app..."
     # A veces el worker necesita su propio cache de config si no se comparte el volumen de bootstrap/cache
