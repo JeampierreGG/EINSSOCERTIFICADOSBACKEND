@@ -90,7 +90,7 @@ class AdminPanelProvider extends PanelProvider
     {
         FilamentView::registerRenderHook(
             PanelsRenderHook::HEAD_END,
-            fn (): string => '<link rel="stylesheet" href="' . asset('css/app/filament-custom.css') . '" />',
+            fn (): string => '<link rel="stylesheet" href="/css/app/filament-custom.css?v=2" />',
         );
     }
 }
