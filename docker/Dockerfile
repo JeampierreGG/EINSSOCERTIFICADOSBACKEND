@@ -1,4 +1,4 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 RUN apk add --no-cache git curl bash libpq-dev oniguruma-dev zip unzip libzip-dev icu-dev netcat-openbsd \
   && docker-php-ext-configure intl \
   && docker-php-ext-install pdo pdo_pgsql mbstring intl zip
