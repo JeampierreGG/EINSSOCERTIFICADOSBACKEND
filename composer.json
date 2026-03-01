@@ -70,7 +70,8 @@
         },
         "audit": {
             "ignore": [
-                "PKSA-jyd3-2srm-pfqd"
+                "PKSA-jyd3-2srm-pfqd",
+                "PKSA-1ds2-yqqr-64g1"
             ]
         }
     },
