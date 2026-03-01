@@ -119,7 +119,7 @@ class AdminPanelProvider extends PanelProvider
     public function boot(): void
     {
         FilamentAsset::register([
-            Css::make('filament-custom', asset('css/filament-custom.css?v=8')),
+            Css::make('filament-custom', public_path('css/filament-custom.css')),
         ]);
     }
 }
