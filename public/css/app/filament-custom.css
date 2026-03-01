@@ -98,3 +98,129 @@ html.dark ::placeholder {
     color: #9ca3af !important;
     opacity: 1;
 }
+
+/* ============================================================
+   LOGIN PAGE – REDISEÑO COMPLETO
+   Fondo: gradiente de marca (índigo → violeta → azul profundo)
+   Tarjeta: glassmorphism con alto relieve y sombra dramática
+   Inputs:  transparentes con borde sutil luminoso
+   ============================================================ */
+
+/* ── MODO OSCURO: PALETA LIMPIA Y PROFESIONAL ─────────────────── */
+
+/* Fondo general de la página */
+html.dark .fi-simple-layout {
+    background-color: #0f172a !important;
+    /* slate-900 */
+}
+
+/* Tarjeta principal (card) */
+html.dark .fi-simple-main {
+    background-color: #1e293b !important;
+    /* slate-800 */
+    border: 1px solid #334155 !important;
+    /* slate-700 */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── LOGO MÁS GRANDE (Aplica en ambos modos) ────────────────────── */
+.einsso-logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Configuración base de logos */
+.einsso-logo-light,
+.einsso-logo-dark {
+    height: 7rem !important;
+    width: auto !important;
+    transition: transform 0.2s ease;
+}
+
+.einsso-logo-light:hover,
+.einsso-logo-dark:hover {
+    transform: scale(1.02);
+}
+
+/* Comportamiento Modo Claro (Por Defecto) */
+.einsso-logo-light {
+    display: block !important;
+}
+
+.einsso-logo-dark {
+    display: none !important;
+}
+
+/* Comportamiento Modo Oscuro */
+html.dark .einsso-logo-light {
+    display: none !important;
+}
+
+html.dark .einsso-logo-dark {
+    display: block !important;
+}
+
+/* ── MODO OSCURO: INPUTS CON ALTO CONTRASTE ─────────────────────── */
+
+/* Contenedor del input */
+html.dark .fi-simple-page .fi-input-wrapper,
+html.dark .fi-simple-main .fi-input-wrapper {
+    background-color: #0f172a !important;
+    /* slate-900, contraste con card slate-800 */
+    border-color: #334155 !important;
+    /* slate-700 */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Foco en el input */
+html.dark .fi-simple-page .fi-input-wrapper:focus-within,
+html.dark .fi-simple-main .fi-input-wrapper:focus-within {
+    border-color: #6366f1 !important;
+    /* indigo-500 */
+    box-shadow: 0 0 0 1px #6366f1 !important;
+}
+
+/* El elemento <input> en sí */
+html.dark .fi-simple-page input[type="email"],
+html.dark .fi-simple-page input[type="password"],
+html.dark .fi-simple-page input[type="text"],
+html.dark .fi-simple-main input[type="email"],
+html.dark .fi-simple-main input[type="password"],
+html.dark .fi-simple-main input[type="text"] {
+    background-color: #0f172a !important;
+    /* slate-900 */
+    color: #f8fafc !important;
+    /* slate-50 (casi blanco) */
+    -webkit-text-fill-color: #f8fafc !important;
+    caret-color: #818cf8 !important;
+    /* indigo-400 */
+}
+
+/* Corrección del autocompletado del navegador */
+html.dark .fi-simple-page input:-webkit-autofill,
+html.dark .fi-simple-main input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Textos, títulos y placeholders */
+html.dark .fi-simple-page ::placeholder,
+html.dark .fi-simple-main ::placeholder {
+    color: #64748b !important;
+    /* slate-500 */
+    opacity: 1 !important;
+}
+
+html.dark .fi-simple-page h1,
+html.dark .fi-simple-main h1 {
+    color: #f8fafc !important;
+    /* slate-50 */
+}
+
+html.dark .fi-simple-page .fi-fo-field-wrp label,
+html.dark .fi-simple-main .fi-fo-field-wrp label {
+    color: #cbd5e1 !important;
+    /* slate-300 */
+}

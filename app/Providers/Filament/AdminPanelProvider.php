@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\Auth\Login;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -33,8 +34,10 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->id('admin')
             ->path('admin')
-            ->login()
-            ->brandName('EINSSO | Dashboard')
+            ->login(Login::class)
+            ->brandLogo(fn () => view('filament.brand-logo'))
+            ->brandLogoHeight('7rem')
+            ->darkMode(true)
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth('full')
 
@@ -81,5 +84,12 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    public function boot(): void
+    {
+        FilamentAsset::register([
+            Css::make('filament-custom', asset('css/app/filament-custom.css')),
+        ]);
     }
 }
