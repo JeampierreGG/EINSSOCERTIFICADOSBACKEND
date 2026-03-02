@@ -19,10 +19,10 @@ class RevenueChart extends ChartWidget
     {
         // Calculate daily revenue for the last 30 days
         $data = DB::table('payments')
-            ->select(DB::raw('created_at::date as date'), DB::raw('SUM(amount) as total'))
+            ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('SUM(amount) as total'))
             ->where('status', 'approved')
             ->where('created_at', '>=', Carbon::now()->subDays(31))
-            ->groupBy('date')
+            ->groupBy(DB::raw('CAST(created_at AS DATE)'))
             ->orderBy('date')
             ->get();
 

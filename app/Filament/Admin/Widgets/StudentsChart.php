@@ -18,7 +18,7 @@ class StudentsChart extends ChartWidget
         $data = DB::table('users')
             ->select(DB::raw("TO_CHAR(created_at, 'YYYY-MM') as month"), DB::raw('count(*) as total'))
             ->where('role_id', 2)
-            ->where('is_admin', 0)
+            ->where('is_admin', false)
             ->where('created_at', '>=', Carbon::now()->subMonths(12))
             ->groupBy('month')
             ->orderBy('month')
