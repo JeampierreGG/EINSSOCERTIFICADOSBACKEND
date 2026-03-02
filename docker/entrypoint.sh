@@ -49,12 +49,17 @@ if [ "$1" != "php" ] || [ "$2" != "artisan" ] || [ "$3" != "queue:work" ]; then
     
     # Limpiar caches previas para evitar inconsistencias
     php artisan optimize:clear || true
+    php artisan filament:optimize-clear || true
+    
+    # Actualizar dependencias de Filament (assets)
+    php artisan filament:upgrade || true
     
     # Cachear nueva configuración (tolerante a errores — no es crítico para el arranque)
     php artisan config:cache || true
     php artisan route:cache || true
     php artisan view:cache || true
     php artisan event:cache || true
+    php artisan filament:optimize || true
     
     # Ejecutar migraciones — SI FALLA, el contenedor debe detenerse
     # (no silenciar con || true, necesitamos saber si hay un problema)
