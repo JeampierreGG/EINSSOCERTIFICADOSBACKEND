@@ -259,6 +259,12 @@ class ManageCourseModules extends Page implements HasTable
                     }),
             ])
             ->reorderable('order')
+            ->reorderRecordsTriggerAction(
+                fn (Tables\Actions\Action $action) => $action
+                    ->button()
+                    ->label('Reordenar')
+                    ->icon('heroicon-o-arrows-up-down'),
+            )
             ->defaultSort('order', 'asc');
     }
 
