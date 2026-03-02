@@ -180,7 +180,8 @@ class CourseResource extends Resource
                                     ->directory('courses')
                                     ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
                                     ->visibility('private')
-                                    ->maxSize(5120),
+                                    ->maxSize(5120)
+                                    ->helperText('Proporción ideal 16:9. Dimensión sugerida: 800 x 450 px.'),
 
                                 Forms\Components\FileUpload::make('welcome_image_path')
                                     ->label('Imagen de Bienvenida')
@@ -188,7 +189,8 @@ class CourseResource extends Resource
                                     ->directory('courses/welcome')
                                     ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
                                     ->visibility('private')
-                                    ->maxSize(5120),
+                                    ->maxSize(5120)
+                                    ->helperText('Proporción ideal 16:9. Dimensión sugerida: 1280 x 720 px (o 1920 x 1080 px).'),
 
                                 Forms\Components\FileUpload::make('brochure_path')
                                     ->label('Brochure (PDF)')
