@@ -72,6 +72,9 @@ if [ "$1" != "php" ] || [ "$2" != "artisan" ] || [ "$3" != "queue:work" ]; then
         exit 1
     fi
     echo "✅ Migraciones completadas exitosamente."
+
+    echo "Asegurando datos base de Tipos de Certificación..."
+    php artisan db:seed --class=InstitutionSeeder --force || true
 else
     echo "Instancia de WORKER detectada. Saltando mantenimiento de app..."
     # A veces el worker necesita su propio cache de config si no se comparte el volumen de bootstrap/cache
