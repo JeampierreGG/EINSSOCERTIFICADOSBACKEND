@@ -20,8 +20,10 @@ mkdir -p storage/framework/sessions \
 # 2. Corregir permisos de carpetas críticas al inicio
 echo "Corrigiendo permisos iniciales..."
 chmod -R 775 storage bootstrap/cache || true
-# En entornos de contenedor es común que el usuario sea www-data (id 82 en alpine)
-# chown -R www-data:www-data storage bootstrap/cache || true
+# IMPORTANTE: php-fpm corre como www-data (uid 82 en Alpine).
+# En bind mounts el owner es el del host (jeampier/root), no www-data.
+# Sin chown, php-fpm no puede escribir vistas compiladas → 500 silencioso.
+chown -R www-data:www-data storage bootstrap/cache || true
 
 # 3. Instalar dependencias si no existen (volumen vacío en primer arranque)
 if [ ! -d vendor ]; then
