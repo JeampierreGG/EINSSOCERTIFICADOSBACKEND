@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Schema::table('courses', function (Blueprint $table) {
-        //     $table->integer('academic_hours')->default(0)->after('duration_text'); 
-        // });
+        Schema::table('courses', function (Blueprint $table) {
+            if (!Schema::hasColumn('courses', 'academic_hours')) {
+                $table->integer('academic_hours')->default(0)->after('duration_text'); 
+            }
+        });
     }
 
     /**
