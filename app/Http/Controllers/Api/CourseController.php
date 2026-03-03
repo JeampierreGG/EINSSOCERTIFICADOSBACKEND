@@ -169,6 +169,9 @@ class CourseController extends Controller
         }
 
         $path = ltrim(trim($path), '/');
+        if (str_contains($path, '../') || str_contains($path, '..\\')) {
+             return response()->json(['message' => 'Ruta inválida'], 400);
+        }
         $disk = Storage::disk(config('filesystems.default'));
 
         // Estrategia de Fuerza Bruta: Probar variantes comunes de encoding que rompen S3/Contabo
@@ -366,20 +369,35 @@ class CourseController extends Controller
             return $mod;
         });
 
-        $evaluations = \App\Models\Evaluation::where('course_id', $course->id)->get()->map(function ($eval) use ($userId) {
+        $evaluations = \App\Models\Evaluation::where('course_id', $course->id)->get();
+        $attemptsStats = [];
+        $extensions = [];
+        if ($userId) {
+            $evalIds = $evaluations->pluck('id');
+            // Fetch stats for all these evaluations
+            $attemptsStats = \App\Models\EvaluationAttempt::where('user_id', $userId)
+                ->whereIn('evaluation_id', $evalIds)
+                ->select('evaluation_id', \Illuminate\Support\Facades\DB::raw('MAX(attempt_number) as max_attempt'), \Illuminate\Support\Facades\DB::raw('MAX(score) as max_score'))
+                ->groupBy('evaluation_id')
+                ->get()
+                ->keyBy('evaluation_id');
+            
+            $extensions = \App\Models\EvaluationUserExtension::where('user_id', $userId)
+                ->whereIn('evaluation_id', $evalIds)
+                ->get()
+                ->keyBy('evaluation_id');
+        }
+
+        $evaluations = $evaluations->map(function ($eval) use ($userId, $attemptsStats, $extensions) {
             $eval->content_type = 'evaluation';
             
-            $maxAttemptNumber = $userId ? \App\Models\EvaluationAttempt::where('user_id', $userId)
-                                                    ->where('evaluation_id', $eval->id)
-                                                    ->max('attempt_number') : null;
-            
-            $eval->user_attempts_count = $maxAttemptNumber ?? 0;
-
-            // Calcular la nota más alta obtenida
-            $maxScore = $userId ? \App\Models\EvaluationAttempt::where('user_id', $userId)
-                                                    ->where('evaluation_id', $eval->id)
-                                                    ->max('score') : null;
-            $eval->max_score = $maxScore;
+            $eval->user_attempts_count = $userId && isset($attemptsStats[$eval->id]) ? $attemptsStats[$eval->id]->max_attempt : 0;
+            $eval->max_score = $userId && isset($attemptsStats[$eval->id]) ? $attemptsStats[$eval->id]->max_score : null;
+            if ($userId && isset($extensions[$eval->id])) {
+                $eval->user_extension = $extensions[$eval->id];
+            } else {
+                $eval->user_extension = null;
+            }
 
             return $eval;
         });
@@ -411,9 +429,7 @@ class CourseController extends Controller
                 $endDate = $item->end_date;
 
                 if ($userId) {
-                     $extension = \App\Models\EvaluationUserExtension::where('user_id', $userId)
-                        ->where('evaluation_id', $item->id)
-                        ->first();
+                     $extension = $item->user_extension ?? null;
                      
                      if ($extension) {
                          if ($extension->extra_attempts > 0) {
@@ -522,15 +538,49 @@ class CourseController extends Controller
                         ->with(['course.teacher.user'])   
                         ->get();
         
-        $courses = $enrollments->map(function ($enrollment) use ($user) {
+        $courseIds = $enrollments->pluck('course_id');
+
+        $completedModulesData = \App\Models\CourseProgress::where('user_id', $user->id)
+            ->whereIn('course_id', $courseIds)
+            ->whereNotNull('module_id')
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT module_id) as count'))
+            ->groupBy('course_id')
+            ->pluck('count', 'course_id');
+
+        $totalEvaluationsData = \App\Models\Evaluation::whereIn('course_id', $courseIds)
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+            ->groupBy('course_id')
+            ->pluck('count', 'course_id');
+
+        $completedEvaluationsData = \App\Models\EvaluationAttempt::where('user_id', $user->id)
+            ->whereIn('course_id', $courseIds)
+            ->whereHas('evaluation')
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT evaluation_id) as count'))
+            ->groupBy('course_id')
+            ->pluck('count', 'course_id');
+            
+        // Pre-count modules per course
+        $totalModulesData = \App\Models\CourseModule::whereIn('course_id', $courseIds)
+            ->select('course_id', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+            ->groupBy('course_id')
+            ->pluck('count', 'course_id');
+
+        $stats = [
+            'total_modules' => $totalModulesData,
+            'completed_modules' => $completedModulesData,
+            'total_evaluations' => $totalEvaluationsData,
+            'completed_evaluations' => $completedEvaluationsData,
+        ];
+
+        $courses = $enrollments->map(function ($enrollment) use ($user, $stats) {
              if (!$enrollment->course) return null;
-             return $this->transformMyCourseList($enrollment->course, $user->id, $enrollment->status);
+             return $this->transformMyCourseList($enrollment->course, $user->id, $enrollment->status, $stats);
         })->filter(function($c) { return $c !== null; })->values();
 
         return response()->json($courses);
     }
 
-    private function transformMyCourseList(\App\Models\Course $course, $userId, $enrollmentStatus = 'active')
+    private function transformMyCourseList(\App\Models\Course $course, $userId, $enrollmentStatus = 'active', $stats = [])
     {
         $data = $this->transformCourseList($course);
         
@@ -539,27 +589,14 @@ class CourseController extends Controller
         
         // 1. Estadísticas de Módulos
         // Total de módulos del curso
-        $totalModules = $course->modules->count();
+        $totalModules = $stats['total_modules'][$course->id] ?? $course->modules->count();
         
-        // Módulos completados por el usuario (basado en la tabla course_progress con module_id)
-        $completedModules = \App\Models\CourseProgress::where('user_id', $userId)
-            ->where('course_id', $course->id)
-            ->whereNotNull('module_id')
-            ->distinct('module_id')
-            ->count('module_id');
+        // Módulos completados por el usuario
+        $completedModules = $stats['completed_modules'][$course->id] ?? 0;
 
         // 2. Estadísticas de Evaluaciones
-        $totalEvaluations = \App\Models\Evaluation::where('course_id', $course->id)->count();
-        
-        $completedEvaluations = 0;
-        if ($totalEvaluations > 0) {
-            $completedEvaluations = \App\Models\EvaluationAttempt::where('user_id', $userId)
-                ->whereHas('evaluation', function($q) use ($course) {
-                    $q->where('course_id', $course->id);
-                })
-                ->distinct('evaluation_id')
-                ->count('evaluation_id');
-        }
+        $totalEvaluations = $stats['total_evaluations'][$course->id] ?? 0;
+        $completedEvaluations = $stats['completed_evaluations'][$course->id] ?? 0;
 
         // 3. Cálculo de Progreso General
         // El 100% es la suma de (Todos los Módulos + Todas las Evaluaciones)

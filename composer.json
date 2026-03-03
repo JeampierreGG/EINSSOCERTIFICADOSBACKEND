@@ -71,13 +71,6 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true
-        },
-        "audit": {
-            "block-insecure": false,
-            "ignore": [
-                "PKSA-jyd3-2srm-pfqd",
-                "PKSA-1ds2-yqqr-64g1"
-            ]
         }
     },
     "minimum-stability": "stable",

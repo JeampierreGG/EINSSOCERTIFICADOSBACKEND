@@ -26,10 +26,10 @@ use App\Http\Controllers\Api\AuthController;
 // NOTA: No usar Route::middleware('web') aquí. El grupo 'api' en Kernel.php
 // ya incluye EnsureFrontendRequestsAreStateful que gestiona Sanctum SPA.
 // Agregar 'web' duplicaría sesión+CSRF causando bugs en producción.
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/logout', [AuthController::class, 'logout']);
-Route::post('/forgot-password/send-code', [AuthController::class, 'sendResetCode']);
+Route::post('/forgot-password/send-code', [AuthController::class, 'sendResetCode'])->middleware('throttle:5,1');
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPassword']);
 
 // --------------------------------------------------------------------------

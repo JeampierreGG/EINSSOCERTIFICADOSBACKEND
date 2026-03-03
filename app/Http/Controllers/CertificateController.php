@@ -271,6 +271,9 @@ class CertificateController extends Controller
         if (! $record || ! $record->file_path) {
             return response()->json(['message' => 'Archivo no disponible'], 404);
         }
+        if (str_contains($record->file_path, '../') || str_contains($record->file_path, '..\\')) {
+            return response()->json(['message' => 'Ruta inválida'], 400);
+        }
         $nameBase = trim(($record->title ?? 'certificado').' '.($record->code ?? ''));
         $safeName = preg_replace('/[^A-Za-z0-9_\- ]+/','', $nameBase);
         $downloadName = ($safeName !== '' ? $safeName : 'certificado').'.pdf';
@@ -289,6 +292,9 @@ class CertificateController extends Controller
         }
         if (! $record || ! $record->file_path) {
             return response()->json(['message' => 'Archivo no disponible'], 404);
+        }
+        if (str_contains($record->file_path, '../') || str_contains($record->file_path, '..\\')) {
+            return response()->json(['message' => 'Ruta inválida'], 400);
         }
         $nameBase = trim(($record->title ?? 'certificado').' '.($record->code ?? ''));
         $safeName = preg_replace('/[^A-Za-z0-9_\- ]+/','', $nameBase);
